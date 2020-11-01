@@ -128,6 +128,7 @@ Partial Class Form1
         'btn_filter
         '
         Me.btn_filter.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btn_filter.Enabled = False
         Me.btn_filter.Location = New System.Drawing.Point(504, 41)
         Me.btn_filter.Name = "btn_filter"
         Me.btn_filter.Size = New System.Drawing.Size(75, 23)
@@ -206,7 +207,6 @@ Partial Class Form1
         Me.txt_pass.Name = "txt_pass"
         Me.txt_pass.Size = New System.Drawing.Size(140, 20)
         Me.txt_pass.TabIndex = 4
-        Me.txt_pass.Text = "Forensic$2"
         '
         'txt_port
         '
@@ -230,7 +230,6 @@ Partial Class Form1
         Me.txt_user.Name = "txt_user"
         Me.txt_user.Size = New System.Drawing.Size(201, 20)
         Me.txt_user.TabIndex = 3
-        Me.txt_user.Text = "a.cortinovis@michelevitiello.it"
         '
         'txt_server
         '
@@ -238,7 +237,6 @@ Partial Class Form1
         Me.txt_server.Name = "txt_server"
         Me.txt_server.Size = New System.Drawing.Size(105, 20)
         Me.txt_server.TabIndex = 1
-        Me.txt_server.Text = "imaps.aruba.it"
         '
         'StatusStrip1
         '
