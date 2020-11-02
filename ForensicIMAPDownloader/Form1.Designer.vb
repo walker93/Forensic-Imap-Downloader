@@ -1,9 +1,9 @@
-﻿<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()> _
+﻿<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()>
 Partial Class Form1
     Inherits System.Windows.Forms.Form
 
     'Form esegue l'override del metodo Dispose per pulire l'elenco dei componenti.
-    <System.Diagnostics.DebuggerNonUserCode()> _
+    <System.Diagnostics.DebuggerNonUserCode()>
     Protected Overrides Sub Dispose(ByVal disposing As Boolean)
         Try
             If disposing AndAlso components IsNot Nothing Then
@@ -20,9 +20,10 @@ Partial Class Form1
     'NOTA: la procedura che segue è richiesta da Progettazione Windows Form
     'Può essere modificata in Progettazione Windows Form.  
     'Non modificarla mediante l'editor del codice.
-    <System.Diagnostics.DebuggerStepThrough()> _
+    <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
         Me.GroupBox1 = New System.Windows.Forms.GroupBox()
+        Me.btn_abort = New System.Windows.Forms.Button()
         Me.num_picker = New System.Windows.Forms.NumericUpDown()
         Me.cb_ssl = New System.Windows.Forms.CheckBox()
         Me.btn_browse = New System.Windows.Forms.Button()
@@ -59,6 +60,7 @@ Partial Class Form1
         '
         Me.GroupBox1.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.GroupBox1.Controls.Add(Me.btn_abort)
         Me.GroupBox1.Controls.Add(Me.num_picker)
         Me.GroupBox1.Controls.Add(Me.cb_ssl)
         Me.GroupBox1.Controls.Add(Me.btn_browse)
@@ -82,6 +84,17 @@ Partial Class Form1
         Me.GroupBox1.TabIndex = 0
         Me.GroupBox1.TabStop = False
         Me.GroupBox1.Text = "Settings"
+        '
+        'btn_abort
+        '
+        Me.btn_abort.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btn_abort.Location = New System.Drawing.Point(504, 67)
+        Me.btn_abort.Name = "btn_abort"
+        Me.btn_abort.Size = New System.Drawing.Size(75, 23)
+        Me.btn_abort.TabIndex = 1002
+        Me.btn_abort.Text = "&Abort"
+        Me.btn_abort.UseVisualStyleBackColor = True
+        Me.btn_abort.Visible = False
         '
         'num_picker
         '
@@ -357,4 +370,5 @@ Partial Class Form1
     Friend WithEvents btn_filter As Button
     Friend WithEvents num_picker As NumericUpDown
     Friend WithEvents Label6 As Label
+    Friend WithEvents btn_abort As Button
 End Class

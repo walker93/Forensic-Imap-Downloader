@@ -11,6 +11,8 @@ Public Class Form1
     Dim saving_file As IO.FileInfo
     Dim filter As New SearchCondition()
     Dim text_filter As String
+    Dim TokenSource As New CancellationTokenSource()
+    Dim token As CancellationToken
 
     Dim logger As NLog.Logger = NLog.LogManager.GetCurrentClassLogger
 
@@ -37,7 +39,7 @@ Public Class Form1
         user = txt_user.Text.Trim
         pass = txt_pass.Text
         port = Integer.Parse(txt_port.Text)
-        logger.Info("STARTED LOGGING")
+        logger.Info("---------------------STARTED LOGGING--------------------------")
         logger.Info("Trying to connect to server {0}", server)
         Try
             imap_client = New ImapClient(server, port, user, pass, AuthMethod.Auto, cb_ssl.CheckState)
@@ -91,16 +93,21 @@ Public Class Form1
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         filter = SearchCondition.All
+        token = TokenSource.Token
     End Sub
 
-    Private Sub btnStart_ButtonClick(sender As Object, e As EventArgs) Handles btn_start.Click
-        If IsNothing(imap_client) Then Exit Sub
+    Private Sub btn_abort_Click(sender As Object, e As EventArgs) Handles btn_abort.Click
+        TokenSource.Cancel()
+    End Sub
+
+    Async Function Download() As Task
+        btn_start.Capture = False
         lbl_Status.Text = String.Format("Downloading...")
-        btn_start.Enabled = False
         btn_filter.Enabled = False
         num_picker.Enabled = False
-
+        btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
         Dim concurrency As Integer = num_picker.Value
+
         Using semaphore As New SemaphoreSlim(concurrency)
             Dim tasks As New List(Of Task)
             For Each folder In folders
@@ -109,33 +116,58 @@ Public Class Form1
                     Continue For
                 End If
                 semaphore.Wait()
-                'TODO: cancellation token per stoppare
                 Dim t = Task.Factory.StartNew(Sub()
                                                   Try
                                                       logger.Info("starting download Of {0}", folder)
-                                                      download_folder(folder)
+                                                      download_folder(folder, token)
                                                   Finally
                                                       semaphore.Release()
                                                   End Try
-                                              End Sub)
+                                              End Sub, token)
                 tasks.Add(t)
-
                 Application.DoEvents()
+                If token.IsCancellationRequested Then
+                    logger.Warn("Operation aborted by the user!")
+                    Exit Function
+                End If
+
             Next
-            Task.WaitAll(tasks.ToArray)
+            Await Task.WhenAll(tasks.ToArray)
         End Using
+        If token.IsCancellationRequested Then
+            lbl_Status.Text = String.Format("Aborted")
+            logger.Info("Operation Aborted")
+            TokenSource.Dispose()
+            TokenSource = New CancellationTokenSource
+            token = TokenSource.Token
+            btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
+            num_picker.Enabled = True
+            Exit Function
+        End If
         lbl_Status.Text = String.Format("Creating Zip file...")
         logger.Info("Creating Zip file...")
-        ZipFile.CreateFromDirectory(saving_file.DirectoryName & "\TEMP\", saving_file.FullName)
+        Task.Run(Sub()
+                     ZipFile.CreateFromDirectory(saving_file.DirectoryName & "\TEMP\", saving_file.FullName)
+                 End Sub).Wait()
         lbl_Status.Text = String.Format("Calculating HASH...")
         logger.Info("Calculating HASH...")
-        Dim hash = GetHashSha1(saving_file.FullName)
+        Dim hash As String = ""
+        Task.Run(Sub()
+                     hash = GetHashSha1(saving_file.FullName)
+                 End Sub).Wait()
         logger.Info("Calculated HASH: {0}", hash)
         lbl_Status.Text = String.Format("Finished")
         IO.Directory.Delete(saving_file.DirectoryName & "\TEMP\", True)
+
+        btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
+    End Function
+
+    Private Async Sub btnStart_ButtonClick(sender As Object, e As EventArgs) Handles btn_start.Click
+        If IsNothing(imap_client) Then Exit Sub
+        Await Download()
     End Sub
 
-    Sub download_folder(folder As String)
+    Sub download_folder(folder As String, CT As CancellationToken)
         Dim uids = imap_client.Search(filter, folder)
         Dim count = 0
         Dim dest_folder = IO.Path.Combine(saving_file.DirectoryName, "TEMP", folder & "\")
@@ -144,6 +176,10 @@ Public Class Form1
         Dim err_count As Integer
         IO.Directory.CreateDirectory(dest_folder)
         For Each uid In uids
+            If CT.IsCancellationRequested Then
+                logger.Warn($"Operation aborted by the user!")
+                Exit For
+            End If
             Try
                 mail_path = dest_folder & uid & ".eml"
                 If Not IO.File.Exists(mail_path) Then
@@ -171,7 +207,14 @@ Public Class Form1
                 .Value = "Completed."
                 .Style.BackColor = Color.FromArgb(133, 224, 133)
             End If
+            If CT.IsCancellationRequested Then
+                logger.Warn($"Downloaded only {count} emails out of {uids.Count} from {folder}")
+                .Value = $"Aborted! Downloaded only {count} emails out of {uids.Count}"
+                .Style.BackColor = Color.FromArgb(255, 102, 102)
+            Else
+                logger.Info("Download of {0} completed with {1} errors.", folder, err_count)
+            End If
         End With
-        logger.Info("Download of {0} completed with {1} errors.", folder, err_count)
+
     End Sub
 End Class
