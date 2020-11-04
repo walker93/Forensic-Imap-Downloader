@@ -100,6 +100,11 @@ Public Class Form1
         TokenSource.Cancel()
     End Sub
 
+    Private Async Sub btnStart_ButtonClick(sender As Object, e As EventArgs) Handles btn_start.Click
+        If IsNothing(imap_client) Then Exit Sub
+        Await Download()
+    End Sub
+
     Async Function Download() As Task
         btn_start.Capture = False
         lbl_Status.Text = String.Format("Downloading...")
@@ -161,11 +166,6 @@ Public Class Form1
 
         btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
     End Function
-
-    Private Async Sub btnStart_ButtonClick(sender As Object, e As EventArgs) Handles btn_start.Click
-        If IsNothing(imap_client) Then Exit Sub
-        Await Download()
-    End Sub
 
     Sub download_folder(folder As String, CT As CancellationToken)
         Dim uids = imap_client.Search(filter, folder)

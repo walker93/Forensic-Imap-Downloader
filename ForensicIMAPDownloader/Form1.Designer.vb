@@ -114,7 +114,7 @@ Partial Class Form1
         Me.cb_ssl.Location = New System.Drawing.Point(308, 19)
         Me.cb_ssl.Name = "cb_ssl"
         Me.cb_ssl.Size = New System.Drawing.Size(46, 17)
-        Me.cb_ssl.TabIndex = 6
+        Me.cb_ssl.TabIndex = 3
         Me.cb_ssl.Text = "SSL"
         Me.cb_ssl.UseVisualStyleBackColor = True
         '
@@ -219,7 +219,7 @@ Partial Class Form1
         Me.txt_pass.Location = New System.Drawing.Point(351, 43)
         Me.txt_pass.Name = "txt_pass"
         Me.txt_pass.Size = New System.Drawing.Size(140, 20)
-        Me.txt_pass.TabIndex = 4
+        Me.txt_pass.TabIndex = 5
         '
         'txt_port
         '
@@ -236,16 +236,20 @@ Partial Class Form1
         Me.txt_path.ReadOnly = True
         Me.txt_path.Size = New System.Drawing.Size(343, 20)
         Me.txt_path.TabIndex = 1000
+        Me.txt_path.TabStop = False
         '
         'txt_user
         '
         Me.txt_user.Location = New System.Drawing.Point(82, 43)
         Me.txt_user.Name = "txt_user"
         Me.txt_user.Size = New System.Drawing.Size(201, 20)
-        Me.txt_user.TabIndex = 3
+        Me.txt_user.TabIndex = 4
         '
         'txt_server
         '
+        Me.txt_server.AutoCompleteCustomSource.AddRange(New String() {"imaps.aruba.it", "imap.gmail.com", "imap.mail.me.com", "outlook.office365.com"})
+        Me.txt_server.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest
+        Me.txt_server.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.CustomSource
         Me.txt_server.Location = New System.Drawing.Point(82, 17)
         Me.txt_server.Name = "txt_server"
         Me.txt_server.Size = New System.Drawing.Size(105, 20)
