@@ -91,7 +91,7 @@ Partial Class Form1
         Me.btn_abort.Location = New System.Drawing.Point(504, 67)
         Me.btn_abort.Name = "btn_abort"
         Me.btn_abort.Size = New System.Drawing.Size(75, 23)
-        Me.btn_abort.TabIndex = 1002
+        Me.btn_abort.TabIndex = 10
         Me.btn_abort.Text = "&Abort"
         Me.btn_abort.UseVisualStyleBackColor = True
         Me.btn_abort.Visible = False
@@ -123,7 +123,7 @@ Partial Class Form1
         Me.btn_browse.Location = New System.Drawing.Point(431, 67)
         Me.btn_browse.Name = "btn_browse"
         Me.btn_browse.Size = New System.Drawing.Size(60, 23)
-        Me.btn_browse.TabIndex = 5
+        Me.btn_browse.TabIndex = 6
         Me.btn_browse.Text = "&Browse"
         Me.btn_browse.UseVisualStyleBackColor = True
         '
@@ -134,7 +134,7 @@ Partial Class Form1
         Me.btn_start.Location = New System.Drawing.Point(504, 67)
         Me.btn_start.Name = "btn_start"
         Me.btn_start.Size = New System.Drawing.Size(75, 23)
-        Me.btn_start.TabIndex = 8
+        Me.btn_start.TabIndex = 9
         Me.btn_start.Text = "&Download"
         Me.btn_start.UseVisualStyleBackColor = True
         '
@@ -145,7 +145,7 @@ Partial Class Form1
         Me.btn_filter.Location = New System.Drawing.Point(504, 41)
         Me.btn_filter.Name = "btn_filter"
         Me.btn_filter.Size = New System.Drawing.Size(75, 23)
-        Me.btn_filter.TabIndex = 7
+        Me.btn_filter.TabIndex = 8
         Me.btn_filter.Text = "&Filter"
         Me.btn_filter.UseVisualStyleBackColor = True
         '
@@ -297,6 +297,7 @@ Partial Class Form1
         Me.data_tb.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
         Me.data_tb.Size = New System.Drawing.Size(614, 188)
         Me.data_tb.TabIndex = 0
+        Me.data_tb.TabStop = False
         '
         'cb_col
         '

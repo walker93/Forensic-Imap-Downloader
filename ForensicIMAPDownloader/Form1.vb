@@ -97,6 +97,7 @@ Public Class Form1
     End Sub
 
     Private Sub btn_abort_Click(sender As Object, e As EventArgs) Handles btn_abort.Click
+
         TokenSource.Cancel()
     End Sub
 
@@ -184,6 +185,14 @@ Public Class Form1
                 mail_path = dest_folder & uid & ".eml"
                 If Not IO.File.Exists(mail_path) Then
                     message = imap_client.GetMessage(uid, FetchOptions.Normal, False, folder)
+                    If message.To.Count = 0 Then
+                        message.To.Add("UNKNOWN@forensicsimapdownloader.net")
+                        logger.Warn($"Added UKNOWN in empty 'To' field for preventing Exception in email with uid: {uid} in {folder}")
+                    End If
+                    If IsNothing(message.From) Then
+                        message.From = New Net.Mail.MailAddress("UKNOWN@forensicsimapdownloader.net")
+                        logger.Warn($"Added UKNOWN in empty 'From' field for preventing Exception in email with uid: {uid} in {folder}")
+                    End If
                     message.SaveMailMessage(mail_path)
                 End If
             Catch ex As Exception
