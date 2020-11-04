@@ -13,7 +13,7 @@ Public Class Form1
     Dim text_filter As String
     Dim TokenSource As New CancellationTokenSource()
     Dim token As CancellationToken
-
+    Dim tasks As New List(Of Task)
     Dim logger As NLog.Logger = NLog.LogManager.GetCurrentClassLogger
 
     Private Sub btn_browse_Click(sender As Object, e As EventArgs) Handles btn_browse.Click
@@ -97,8 +97,21 @@ Public Class Form1
     End Sub
 
     Private Sub btn_abort_Click(sender As Object, e As EventArgs) Handles btn_abort.Click
-
+        Dim abort_form As New Abort()
+        Dim diag_result = abort_form.ShowDialog()
+        If diag_result = DialogResult.Cancel Then Exit Sub
         TokenSource.Cancel()
+        Task.WaitAll(tasks.ToArray)
+        Select Case abort_form.choice
+            Case 1
+                IO.Directory.Delete(saving_file.DirectoryName & "\TEMP\", True)
+                logger.Info("User selected choice 1, deleted already downloaded emails.")
+            Case 2
+                logger.Info("User selected choice 2, keeping emails in TEMP folder for resume")
+            Case 3
+                logger.Info("User selected choice 3, archiving and hashing already downloaded emails.")
+                Zip_Hash()
+        End Select
     End Sub
 
     Private Async Sub btnStart_ButtonClick(sender As Object, e As EventArgs) Handles btn_start.Click
@@ -112,10 +125,10 @@ Public Class Form1
         btn_filter.Enabled = False
         num_picker.Enabled = False
         btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
-        Dim concurrency As Integer = num_picker.Value
+        Dim concurrency As Integer = num_picker.Value + 1
 
         Using semaphore As New SemaphoreSlim(concurrency)
-            Dim tasks As New List(Of Task)
+
             For Each folder In folders
                 If Not data_tb.Rows.Item(folders.IndexOf(folder)).Cells.Item(0).Value Then
                     logger.Info("Skipping {0}", folder)
@@ -150,6 +163,12 @@ Public Class Form1
             num_picker.Enabled = True
             Exit Function
         End If
+        Zip_Hash()
+
+        btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
+    End Function
+
+    Sub Zip_Hash()
         lbl_Status.Text = String.Format("Creating Zip file...")
         logger.Info("Creating Zip file...")
         Task.Run(Sub()
@@ -164,9 +183,7 @@ Public Class Form1
         logger.Info("Calculated HASH: {0}", hash)
         lbl_Status.Text = String.Format("Finished")
         IO.Directory.Delete(saving_file.DirectoryName & "\TEMP\", True)
-
-        btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
-    End Function
+    End Sub
 
     Sub download_folder(folder As String, CT As CancellationToken)
         Dim uids = imap_client.Search(filter, folder)

@@ -99,6 +99,12 @@
     <Import Include="System.Threading.Tasks" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Abort.Designer.vb">
+      <DependentUpon>Abort.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Abort.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Form1.vb">
       <SubType>Form</SubType>
     </Compile>
@@ -137,6 +143,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Abort.resx">
+      <DependentUpon>Abort.vb</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.vb</DependentUpon>
     </EmbeddedResource>
