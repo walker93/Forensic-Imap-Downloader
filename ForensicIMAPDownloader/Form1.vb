@@ -185,6 +185,7 @@ Public Class Form1
         logger.Info("Calculated HASH: {0}", hash)
         lbl_Status.Text = String.Format("Finished")
         IO.Directory.Delete(saving_file.DirectoryName & "\TEMP\", True)
+        logger.Info("---------------- Finished ----------------")
     End Sub
 
     Sub download_folder(folder As String, CT As CancellationToken)
