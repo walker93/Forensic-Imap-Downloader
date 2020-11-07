@@ -23,7 +23,6 @@ Public Class Form1
         If Not savedialog.ShowDialog = DialogResult.OK Then Exit Sub
         txt_path.Text = savedialog.FileName
         saving_file = New IO.FileInfo(savedialog.FileName)
-        If saving_file.Exists Then saving_file.Delete()
         btn_check.Enabled = True
     End Sub
 
@@ -104,7 +103,8 @@ Public Class Form1
         Task.WaitAll(tasks.ToArray)
         Select Case abort_form.choice
             Case 1
-                IO.Directory.Delete(saving_file.DirectoryName & "\TEMP\", True)
+                If IO.Directory.Exists(saving_file.DirectoryName & "\TEMP\") Then _
+                    IO.Directory.Delete(saving_file.DirectoryName & "\TEMP\", True)
                 logger.Info("User selected choice 1, deleted already downloaded emails.")
             Case 2
                 logger.Info("User selected choice 2, keeping emails in TEMP folder for resume")
@@ -161,6 +161,7 @@ Public Class Form1
             token = TokenSource.Token
             btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
             num_picker.Enabled = True
+            btn_filter.Enabled = True
             Exit Function
         End If
         Zip_Hash()
@@ -169,6 +170,7 @@ Public Class Form1
     End Function
 
     Sub Zip_Hash()
+        If saving_file.Exists Then saving_file.Delete()
         lbl_Status.Text = String.Format("Creating Zip file...")
         logger.Info("Creating Zip file...")
         Task.Run(Sub()

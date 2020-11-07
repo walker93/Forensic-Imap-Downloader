@@ -210,9 +210,9 @@
       <LastGenOutput>Settings.Designer.vb</LastGenOutput>
     </None>
     <None Include="App.config" />
-    <None Include="NLog.config">
+    <AdditionalFiles Include="NLog.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    </AdditionalFiles>
     <None Include="NLog.xsd">
       <SubType>Designer</SubType>
     </None>
