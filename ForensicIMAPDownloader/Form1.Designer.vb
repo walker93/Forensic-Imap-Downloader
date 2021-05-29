@@ -247,7 +247,7 @@ Partial Class Form1
         '
         'txt_server
         '
-        Me.txt_server.AutoCompleteCustomSource.AddRange(New String() {"imaps.aruba.it", "imap.gmail.com", "imap.mail.me.com", "outlook.office365.com", "imap-mail.outlook.com", "imap.mail.com", "in.virgilio.it", "imapmail.libero.it", "imap.tiscali.it"})
+        Me.txt_server.AutoCompleteCustomSource.AddRange(New String() {"imaps.aruba.it", "imap.gmail.com", "imap.mail.me.com", "outlook.office365.com", "imap-mail.outlook.com", "imap.mail.com", "in.virgilio.it", "imapmail.libero.it", "imap.tiscali.it", "imap.hostinger.com"})
         Me.txt_server.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest
         Me.txt_server.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.CustomSource
         Me.txt_server.Location = New System.Drawing.Point(82, 17)
