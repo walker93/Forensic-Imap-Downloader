@@ -49,6 +49,7 @@ Partial Class Form1
         Me.folders_col = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.mess_num_col = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.prog_col = New System.Windows.Forms.DataGridViewTextBoxColumn()
+        Me.cb_verification = New System.Windows.Forms.CheckBox()
         Me.GroupBox1.SuspendLayout()
         CType(Me.num_picker, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.StatusStrip1.SuspendLayout()
@@ -60,6 +61,7 @@ Partial Class Form1
         '
         Me.GroupBox1.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.GroupBox1.Controls.Add(Me.cb_verification)
         Me.GroupBox1.Controls.Add(Me.btn_abort)
         Me.GroupBox1.Controls.Add(Me.num_picker)
         Me.GroupBox1.Controls.Add(Me.cb_ssl)
@@ -120,7 +122,7 @@ Partial Class Form1
         '
         'btn_browse
         '
-        Me.btn_browse.Location = New System.Drawing.Point(431, 67)
+        Me.btn_browse.Location = New System.Drawing.Point(289, 67)
         Me.btn_browse.Name = "btn_browse"
         Me.btn_browse.Size = New System.Drawing.Size(60, 23)
         Me.btn_browse.TabIndex = 6
@@ -234,7 +236,7 @@ Partial Class Form1
         Me.txt_path.Location = New System.Drawing.Point(82, 69)
         Me.txt_path.Name = "txt_path"
         Me.txt_path.ReadOnly = True
-        Me.txt_path.Size = New System.Drawing.Size(343, 20)
+        Me.txt_path.Size = New System.Drawing.Size(201, 20)
         Me.txt_path.TabIndex = 1000
         Me.txt_path.TabStop = False
         '
@@ -325,6 +327,18 @@ Partial Class Form1
         Me.prog_col.Name = "prog_col"
         Me.prog_col.ReadOnly = True
         '
+        'cb_verification
+        '
+        Me.cb_verification.AutoSize = True
+        Me.cb_verification.Checked = True
+        Me.cb_verification.CheckState = System.Windows.Forms.CheckState.Checked
+        Me.cb_verification.Location = New System.Drawing.Point(355, 71)
+        Me.cb_verification.Name = "cb_verification"
+        Me.cb_verification.Size = New System.Drawing.Size(78, 17)
+        Me.cb_verification.TabIndex = 1002
+        Me.cb_verification.Text = "Verification"
+        Me.cb_verification.UseVisualStyleBackColor = True
+        '
         'Form1
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
@@ -376,4 +390,5 @@ Partial Class Form1
     Friend WithEvents num_picker As NumericUpDown
     Friend WithEvents Label6 As Label
     Friend WithEvents btn_abort As Button
+    Friend WithEvents cb_verification As CheckBox
 End Class

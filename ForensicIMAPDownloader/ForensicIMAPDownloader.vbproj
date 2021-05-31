@@ -29,8 +29,8 @@
     <InstallUrl>https://github.com/walker93/Forensic-Imap-Downloader/releases/</InstallUrl>
     <WebPage>publish.htm</WebPage>
     <OpenBrowserOnPublish>false</OpenBrowserOnPublish>
-    <ApplicationRevision>3</ApplicationRevision>
-    <ApplicationVersion>1.0.2.%2a</ApplicationVersion>
+    <ApplicationRevision>1</ApplicationRevision>
+    <ApplicationVersion>1.0.3.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
     <BootstrapperEnabled>false</BootstrapperEnabled>
@@ -176,6 +176,7 @@
     <Compile Include="search.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="timeout.vb" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Abort.resx">

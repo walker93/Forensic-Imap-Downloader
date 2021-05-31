@@ -11,14 +11,24 @@ Module MailMessageExtension
     <Extension()>
     Public Sub SaveMailMessage(ByVal msg As MailMessage, ByVal filePath As String)
         Dim SentOn = msg.Headers.Item("Date")
+        If SentOn = "" Then SentOn = New Date(1970, 1, 1).ToString("r", Globalization.CultureInfo.CreateSpecificCulture("en-US"))
+
         Using fs = New FileStream(filePath, FileMode.Create)
             msg.ToEMLStream(fs)
         End Using
+        Dim SentOnDate As Date
+        Try
+            SentOnDate = Date.Parse(SentOn, Globalization.CultureInfo.CreateSpecificCulture("en-US")) '25 Feb 2021 08:54:27 +0000
+        Catch ex As Exception
+            SentOnDate = Date.Parse(SentOn.Substring(5), Globalization.CultureInfo.CreateSpecificCulture("en-US")) 'Thu, 25 Feb 2021 08:54:27 +0000
+        End Try
 
-        Dim SentOnDate As Date = Date.Parse(SentOn).ToUniversalTime
+        If IsNothing(SentOnDate) Then Exit Sub
+        SentOnDate = SentOnDate.ToUniversalTime
         IO.File.SetCreationTimeUtc(filePath, SentOnDate)
         IO.File.SetLastWriteTimeUtc(filePath, SentOnDate)
         IO.File.SetLastAccessTimeUtc(filePath, SentOnDate)
+
     End Sub
 
     <Extension()>

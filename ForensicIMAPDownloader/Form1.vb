@@ -15,6 +15,7 @@ Public Class Form1
     Dim token As CancellationToken
     Dim tasks As New List(Of Task)
     Dim logger As NLog.Logger = NLog.LogManager.GetCurrentClassLogger
+    Public mail_hashes As New Dictionary(Of String, String)
 
     Private Sub btn_browse_Click(sender As Object, e As EventArgs) Handles btn_browse.Click
         Dim savedialog As New SaveFileDialog()
@@ -95,12 +96,12 @@ Public Class Form1
         token = TokenSource.Token
     End Sub
 
-    Private Sub btn_abort_Click(sender As Object, e As EventArgs) Handles btn_abort.Click
+    Private Async Sub btn_abort_Click(sender As Object, e As EventArgs) Handles btn_abort.Click
         Dim abort_form As New Abort()
         Dim diag_result = abort_form.ShowDialog()
         If diag_result = DialogResult.Cancel Then Exit Sub
         TokenSource.Cancel()
-        Task.WaitAll(tasks.ToArray)
+        Await Task.WhenAll(tasks.ToArray)
         Select Case abort_form.choice
             Case 1
                 If IO.Directory.Exists(saving_file.DirectoryName & "\TEMP\") Then _
@@ -112,10 +113,13 @@ Public Class Form1
                 logger.Info("User selected choice 3, archiving and hashing already downloaded emails.")
                 Zip_Hash()
         End Select
+        cb_verification.Enabled = Not cb_verification.Enabled
     End Sub
 
     Private Async Sub btnStart_ButtonClick(sender As Object, e As EventArgs) Handles btn_start.Click
         If IsNothing(imap_client) Then Exit Sub
+        cb_verification.Enabled = Not cb_verification.Enabled
+        logger.Info($"Settings: Verification={cb_verification.Checked}, Max Connections={num_picker.Value}")
         Await Download()
     End Sub
 
@@ -170,19 +174,25 @@ Public Class Form1
     End Function
 
     Sub Zip_Hash()
+        If cb_verification.Checked Then
+            Task.Run(Sub()
+                         checkMailHashes()
+                     End Sub).Wait()
+        End If
         If saving_file.Exists Then saving_file.Delete()
         lbl_Status.Text = String.Format("Creating Zip file...")
         logger.Info("Creating Zip file...")
         Task.Run(Sub()
                      ZipFile.CreateFromDirectory(saving_file.DirectoryName & "\TEMP\", saving_file.FullName)
                  End Sub).Wait()
-        lbl_Status.Text = String.Format("Calculating HASH...")
-        logger.Info("Calculating HASH...")
+        lbl_Status.Text = String.Format("Calculating SHA-1 HASH...")
+        logger.Info("Calculating SHA-1 HASH...")
         Dim hash As String = ""
         Task.Run(Sub()
-                     hash = GetHashSha1(saving_file.FullName)
+                     Dim hash_calc As New HashCalculator
+                     hash = hash_calc.GetHashSha1(saving_file.FullName)
                  End Sub).Wait()
-        logger.Info("Calculated HASH: {0}", hash)
+        logger.Info("Calculated SHA-1 HASH: {0}", hash)
         lbl_Status.Text = String.Format("Finished")
         IO.Directory.Delete(saving_file.DirectoryName & "\TEMP\", True)
         logger.Info("---------------- Finished ----------------")
@@ -204,7 +214,8 @@ Public Class Form1
             Try
                 mail_path = dest_folder & uid & ".eml"
                 If Not IO.File.Exists(mail_path) Then
-                    message = imap_client.GetMessage(uid, FetchOptions.Normal, False, folder)
+                    'TODO: more tests... looks like it isn't working
+                    message = WaitFor(Of Net.Mail.MailMessage).Run(TimeSpan.FromMinutes(2), Function() imap_client.GetMessage(uid, FetchOptions.Normal, False, folder))
                     If message.To.Count = 0 Then
                         message.To.Add("UNKNOWN@forensicsimapdownloader.net")
                         logger.Warn($"Added UKNOWN in empty 'To' field for preventing Exception in email with uid: {uid} in {folder}")
@@ -214,6 +225,7 @@ Public Class Form1
                         logger.Warn($"Added UKNOWN in empty 'From' field for preventing Exception in email with uid: {uid} in {folder}")
                     End If
                     message.SaveMailMessage(mail_path)
+
                 End If
             Catch ex As Exception
                 logger.Warn("Folder {2}: email {0} of {1} had a problem.", count + 1, uids.Count, folder)
@@ -221,6 +233,10 @@ Public Class Form1
                 err_count += 1
                 If IO.File.Exists(mail_path) Then IO.File.Delete(mail_path)
             Finally
+                If cb_verification.Checked AndAlso IO.File.Exists(mail_path) Then
+                    Dim hash_calc As New HashCalculator
+                    mail_hashes.Add(mail_path, hash_calc.GetHashmd5(mail_path))
+                End If
                 Dim status = String.Format("Downloading {0}/{1} ({2}%)", count + 1, uids.Count, (count + 1) * 100 \ uids.Count)
                 data_tb.Rows.Item(folders.IndexOf(folder)).Cells.Item(3).Value = status
                 data_tb.Rows.Item(folders.IndexOf(folder)).Cells.Item(3).Style.BackColor = Color.FromArgb(255, 201, 102)
@@ -244,6 +260,41 @@ Public Class Form1
                 logger.Info("Download of {0} completed with {1} errors.", folder, err_count)
             End If
         End With
+
+    End Sub
+
+
+    Sub checkMailHashes()
+        Dim del_count, edit_count As Integer
+        logger.Info("Checking downloaded E-mail Hashes...")
+        lbl_Status.Text = "Checking downloaded e-mails..."
+        Dim filesInFolder = IO.Directory.EnumerateFiles(saving_file.DirectoryName & "\TEMP\", "*", IO.SearchOption.AllDirectories).ToList
+        For Each mail In mail_hashes
+            If IO.File.Exists(mail.Key) Then
+                Dim hash_calc As New HashCalculator
+                If hash_calc.GetHashmd5(mail.Key) <> mail.Value Then
+                    logger.Error($"{mail.Key} has been edited after download!")
+                    edit_count += 1
+                End If
+                filesInFolder.Remove(mail.Key)
+            Else
+                logger.Error($"{mail.Key} has been deleted after download!")
+                del_count += 1
+            End If
+        Next
+        If filesInFolder.Count > 0 Then
+            logger.Error($"Found {filesInFolder.Count} e-mails that weren't downloaded by the program!")
+            For Each extrafile In filesInFolder
+                logger.Error($" - {extrafile}")
+            Next
+        End If
+
+
+        If del_count + edit_count > 0 Then
+            logger.Error($"Found {del_count} deleted e-mails and {edit_count} edited e-mails!")
+        End If
+
+        logger.Info("Check completed")
 
     End Sub
 End Class
