@@ -31,7 +31,6 @@ Partial Class search_builder
         Me.param_cb = New System.Windows.Forms.ToolStripComboBox()
         Me.ToolStripContainer1 = New System.Windows.Forms.ToolStripContainer()
         Me.query_tb = New ScintillaNET.Scintilla()
-        Me.AutocompleteMenu1 = New AutocompleteMenuNS.AutocompleteMenu()
         Me.sel_lbl = New System.Windows.Forms.ToolStripLabel()
         Me.ToolStrip1.SuspendLayout()
         Me.ToolStripContainer1.ContentPanel.SuspendLayout()
@@ -123,14 +122,6 @@ Partial Class search_builder
         Me.query_tb.TabIndex = 1
         Me.query_tb.WrapMode = ScintillaNET.WrapMode.Whitespace
         '
-        'AutocompleteMenu1
-        '
-        Me.AutocompleteMenu1.Colors = CType(resources.GetObject("AutocompleteMenu1.Colors"), AutocompleteMenuNS.Colors)
-        Me.AutocompleteMenu1.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!)
-        Me.AutocompleteMenu1.ImageList = Nothing
-        Me.AutocompleteMenu1.Items = New String(-1) {}
-        Me.AutocompleteMenu1.TargetControlWrapper = Nothing
-        '
         'sel_lbl
         '
         Me.sel_lbl.Name = "sel_lbl"
@@ -162,7 +153,6 @@ Partial Class search_builder
     Friend WithEvents param_cb As ToolStripComboBox
     Friend WithEvents ToolStripContainer1 As ToolStripContainer
     Friend WithEvents query_tb As ScintillaNET.Scintilla
-    Friend WithEvents AutocompleteMenu1 As AutocompleteMenuNS.AutocompleteMenu
     Friend WithEvents NOT_btn As ToolStripButton
     Friend WithEvents sel_lbl As ToolStripLabel
 End Class

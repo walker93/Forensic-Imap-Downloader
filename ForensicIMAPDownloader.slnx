@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ForensicIMAPDownloader.Core/ForensicIMAPDownloader.Core.vbproj" />
+  <Project Path="ForensicIMAPDownloader.Tests/ForensicIMAPDownloader.Tests.vbproj" />
+  <Project Path="ForensicIMAPDownloader/ForensicIMAPDownloader.vbproj" />
+</Solution>
