@@ -22,6 +22,7 @@ Public Class Form1
 
     Private Const UnknownAddress As String = "UNKNOWN@forensicsimapdownloader.net"
     Private Const MessageDownloadTimeout As Integer = 2 ' minutes
+    Private pauseEvent As New ManualResetEventSlim(True)
 
     Private Sub btn_browse_Click(sender As Object, e As EventArgs) Handles btn_browse.Click
         Dim savedialog As New SaveFileDialog()
@@ -101,7 +102,7 @@ Public Class Form1
         If result <> DialogResult.OK Then Exit Sub
         text_filter = search_form.saved_query
         filterQuery = search_form.Selected_criteria
-        logger.Info("Selected filter = {0}", filterQuery)
+        logger.Info("Selected filter = '{0}'", text_filter)
 
         For Each folderName In folders
             Dim rowIndex = folders.IndexOf(folderName)
@@ -119,11 +120,21 @@ Public Class Form1
         token = TokenSource.Token
     End Sub
 
+    ' Modifica di btn_abort_Click: pausa prima di ShowDialog e riprendi se l'utente annulla
     Private Async Sub btn_abort_Click(sender As Object, e As EventArgs) Handles btn_abort.Click
         Dim abort_form As New Abort()
+        ' Pause the download tasks and show the abort form to the user
+        pauseEvent.Reset() ' mette in pausa tutte le task che chiamano pauseEvent.Wait(...)
         Dim diagResult = abort_form.ShowDialog()
-        If diagResult = DialogResult.Cancel Then Exit Sub
+        If diagResult = DialogResult.Cancel Then
+            ' Utente ha annullato l'operazione di abort -> riprendi le task
+            pauseEvent.Set()
+            Exit Sub
+        End If
+
+        ' L'utente ha confermato l'aborto: procedi con la cancellazione
         TokenSource.Cancel()
+        pauseEvent.Set() ' sblocca le task in pausa così possano notare la cancellazione ed uscire dal loop
         Await Task.WhenAll(tasks.ToArray())
         Dim tempDir = Path.Combine(saving_file.DirectoryName, "TEMP")
         Select Case abort_form.choice
@@ -139,10 +150,12 @@ Public Class Form1
         cb_verification.Enabled = Not cb_verification.Enabled
     End Sub
 
+    ' Assicurarsi che il pulsante di avvio ripristini lo stato "non in pausa"
     Private Async Sub btnStart_ButtonClick(sender As Object, e As EventArgs) Handles btn_start.Click
         If imapService Is Nothing Then Exit Sub
         cb_verification.Enabled = Not cb_verification.Enabled
         logger.Info("Settings: Verification={0}, Max Connections={1}", cb_verification.Checked, num_picker.Value)
+        pauseEvent.Set() ' garantisce che i worker non siano in pausa all'avvio
         Await Download()
     End Sub
 
@@ -173,13 +186,13 @@ Public Class Form1
 
                 Dim currentFolder = folderName
                 Dim downloadTask = Task.Run(Sub()
-                                                 Try
-                                                     logger.Info("starting download of {0}", currentFolder)
-                                                     DownloadFolder(currentFolder, tempRoot, token)
-                                                 Finally
-                                                     semaphore.Release()
-                                                 End Try
-                                             End Sub, token)
+                                                Try
+                                                    logger.Info("starting download of {0}", currentFolder)
+                                                    DownloadFolder(currentFolder, tempRoot, token)
+                                                Finally
+                                                    semaphore.Release()
+                                                End Try
+                                            End Sub, token)
                 tasks.Add(downloadTask)
             Next
             Await Task.WhenAll(tasks.ToArray())
@@ -243,7 +256,10 @@ Public Class Form1
             Dim downloaded As Integer = 0
 
             Using hashCalculator As New HashCalculator()
+                ' Nel loop di DownloadFolder: attendi mentre è in pausa (prima di ogni messaggio)
                 For Each uid In uids
+                    ' Se è stata richiesta la pausa, questo chiamerà Wait() finché non viene Set() o finché il token non viene cancellato
+                    pauseEvent.Wait()
                     If cancellationToken.IsCancellationRequested Then
                         logger.Warn("Operation aborted by the user!")
                         Exit For
@@ -294,27 +310,27 @@ Public Class Form1
 
     Private Sub UpdateRowProgress(rowIndex As Integer, downloaded As Integer, total As Integer)
         UpdateGridRow(rowIndex, Sub(row)
-                                     row.Cells(3).Value = $"Downloading {downloaded}/{total} ({downloaded * 100 \ total}%)"
-                                     row.Cells(3).Style.BackColor = Color.FromArgb(255, 201, 102)
-                                 End Sub)
+                                    row.Cells(3).Value = $"Downloading {downloaded}/{total} ({downloaded * 100 \ total}%)"
+                                    row.Cells(3).Style.BackColor = Color.FromArgb(255, 201, 102)
+                                End Sub)
     End Sub
 
     Private Sub SetRowCompleted(rowIndex As Integer, errorCount As Integer, downloaded As Integer, total As Integer, folderName As String, cancellationToken As CancellationToken)
         UpdateGridRow(rowIndex, Sub(row)
-                                     If cancellationToken.IsCancellationRequested Then
-                                         logger.Warn("Downloaded only {0} emails out of {1} from {2}", downloaded, total, folderName)
-                                         row.Cells(3).Value = $"Aborted! Downloaded only {downloaded} emails out of {total}"
-                                         row.Cells(3).Style.BackColor = Color.FromArgb(255, 102, 102)
-                                     ElseIf errorCount > 0 Then
-                                         row.Cells(3).Value = $"Completed with {errorCount} errors"
-                                         row.Cells(3).Style.BackColor = Color.FromArgb(255, 102, 102)
-                                         logger.Info("Download of {0} completed with {1} errors.", folderName, errorCount)
-                                     Else
-                                         row.Cells(3).Value = "Completed."
-                                         row.Cells(3).Style.BackColor = Color.FromArgb(133, 224, 133)
-                                         logger.Info("Download of {0} completed with {1} errors.", folderName, errorCount)
-                                     End If
-                                 End Sub)
+                                    If cancellationToken.IsCancellationRequested Then
+                                        logger.Warn("Downloaded only {0} emails out of {1} from {2}", downloaded, total, folderName)
+                                        row.Cells(3).Value = $"Aborted! Downloaded only {downloaded} emails out of {total}"
+                                        row.Cells(3).Style.BackColor = Color.FromArgb(255, 102, 102)
+                                    ElseIf errorCount > 0 Then
+                                        row.Cells(3).Value = $"Completed with {errorCount} errors"
+                                        row.Cells(3).Style.BackColor = Color.FromArgb(255, 102, 102)
+                                        logger.Info("Download of {0} completed with {1} errors.", folderName, errorCount)
+                                    Else
+                                        row.Cells(3).Value = "Completed."
+                                        row.Cells(3).Style.BackColor = Color.FromArgb(133, 224, 133)
+                                        logger.Info("Download of {0} completed with {1} errors.", folderName, errorCount)
+                                    End If
+                                End Sub)
     End Sub
 
 End Class
