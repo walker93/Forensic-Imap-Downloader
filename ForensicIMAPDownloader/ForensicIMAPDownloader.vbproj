@@ -10,6 +10,11 @@
     <AssemblyName>ForensicIMAPDownloader</AssemblyName>
     <StartupObject>Sub Main</StartupObject>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- .NET 9+ enables CET shadow stacks by default. The common file dialogs load third-party
+         shell extensions into the process, and one that is not CET-compatible kills it with a
+         fail-fast (0xC0000409) that no managed handler can catch - seen when creating a new
+         folder in the save dialog. -->
+    <CETCompat>false</CETCompat>
     <OptionExplicit>On</OptionExplicit>
     <OptionCompare>Binary</OptionCompare>
     <OptionStrict>On</OptionStrict>

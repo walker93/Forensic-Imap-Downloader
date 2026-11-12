@@ -13,6 +13,18 @@ Public Class ImapConnectionSettings
     Public Property UseSsl As Boolean
     Public Property UserName As String
     Public Property Password As String
+
+    ''' <summary>
+    ''' When set, connections authenticate with SASL XOAUTH2 using a token from this provider
+    ''' instead of <see cref="Password"/>.
+    ''' </summary>
+    Public Property TokenProvider As IAccessTokenProvider
+
+    Public ReadOnly Property UsesOAuth As Boolean
+        Get
+            Return TokenProvider IsNot Nothing
+        End Get
+    End Property
 End Class
 
 ''' <summary>
@@ -41,7 +53,14 @@ Public Class ImapDownloadService
         Try
             Dim socketOptions = If(settings.UseSsl, SecureSocketOptions.SslOnConnect, SecureSocketOptions.None)
             client.Connect(settings.Server, settings.Port, socketOptions, cancellationToken)
-            client.Authenticate(settings.UserName, settings.Password, cancellationToken)
+            If settings.UsesOAuth Then
+                ' A fresh token per connection: each concurrent folder download opens its own
+                ' connection, possibly hours after sign-in, long past the first token's expiry.
+                Dim accessToken = settings.TokenProvider.GetAccessTokenAsync(cancellationToken).GetAwaiter().GetResult()
+                client.Authenticate(New SaslMechanismOAuth2(settings.UserName, accessToken), cancellationToken)
+            Else
+                client.Authenticate(settings.UserName, settings.Password, cancellationToken)
+            End If
             Return client
         Catch
             client.Dispose()
@@ -58,11 +77,21 @@ Public Class ImapDownloadService
         End Try
     End Sub
 
-    ''' <summary>Lists every folder in the account's personal namespace(s).</summary>
+    ''' <summary>
+    ''' Lists every folder in the account's personal namespace(s) that can hold messages.
+    ''' Containers flagged \Noselect (e.g. Gmail's "[Gmail]") cannot be opened - EXAMINE fails
+    ''' on them - so they are logged and left out; the folders inside them are still listed.
+    ''' </summary>
     Public Function ListFolders(client As ImapClient, cancellationToken As CancellationToken) As IList(Of IMailFolder)
         Dim allFolders As New List(Of IMailFolder)
         For Each ns As FolderNamespace In client.PersonalNamespaces
-            allFolders.AddRange(client.GetFolders(ns, StatusItems.None, False, cancellationToken))
+            For Each folder In client.GetFolders(ns, StatusItems.None, False, cancellationToken)
+                If folder.Attributes.HasFlag(FolderAttributes.NoSelect) OrElse folder.Attributes.HasFlag(FolderAttributes.NonExistent) Then
+                    logger.Info("Skipping folder {0}: it cannot contain messages ({1})", folder.FullName, folder.Attributes)
+                Else
+                    allFolders.Add(folder)
+                End If
+            Next
         Next
         Return allFolders
     End Function
