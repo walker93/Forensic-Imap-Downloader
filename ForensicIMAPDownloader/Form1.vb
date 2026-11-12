@@ -76,6 +76,9 @@ Public Class Form1
         logger.Info("Trying to connect to server {0}", settings.Server)
 
         btn_check.Enabled = False
+        btn_start.Enabled = False
+        btn_filter.Enabled = False
+        folder_list.Clear()
         If provider Is Nothing Then
             logger.Info("Authentication method: password")
         Else
@@ -120,16 +123,18 @@ Public Class Form1
         folders = discoveredFolders.Select(Function(f) f.FullName).ToList()
         lbl_Status.Text = $"Folders: {folders.Count}"
         logger.Info("Found {0} folders: {1}", folders.Count, String.Join(", ", folders))
-        btn_start.Enabled = True
-        btn_filter.Enabled = True
 
+        Dim counts As New List(Of KeyValuePair(Of String, Integer))
         For Each folderName In folders
             Dim folder = checkClient.GetFolder(folderName, token)
             imapService.OpenReadOnly(folder, token)
             Dim uids = Await Task.Run(Function() imapService.Search(folder, filterQuery, token))
-            data_tb.Rows.Add(True, folderName, $"{uids.Count} / {uids.Count}", "")
+            counts.Add(New KeyValuePair(Of String, Integer)(folderName, uids.Count))
             logger.Info("Folder {0} has {1} emails.", folderName, uids.Count)
         Next
+        folder_list.SetFolders(counts)
+        btn_start.Enabled = True
+        btn_filter.Enabled = True
     End Sub
 
     Private Async Sub btn_filter_Click(sender As Object, e As EventArgs) Handles btn_filter.Click
@@ -142,13 +147,11 @@ Public Class Form1
         logger.Info("Selected filter = '{0}'", text_filter)
 
         For Each folderName In folders
-            Dim rowIndex = folders.IndexOf(folderName)
-            Dim oldValue = CStr(data_tb.Rows(rowIndex).Cells(2).Value).Split("/"c)(1).Trim()
             Dim folder = checkClient.GetFolder(folderName, token)
             imapService.OpenReadOnly(folder, token)
             Dim uids = Await Task.Run(Function() imapService.Search(folder, filterQuery, token))
-            data_tb.Rows(rowIndex).Cells(2).Value = $"{uids.Count} / {oldValue}"
-            logger.Info("Folder {0} has {1} filtered emails, total was {2}.", folderName, uids.Count, oldValue)
+            folder_list.SetMatchingCount(folderName, uids.Count)
+            logger.Info("Folder {0} has {1} filtered emails, total was {2}.", folderName, uids.Count, folder_list.GetTotalCount(folderName))
         Next
     End Sub
 
@@ -354,29 +357,45 @@ Public Class Form1
         Dim tempRoot = Path.Combine(saving_file.DirectoryName, "TEMP")
         tasks = New List(Of Task)
 
-        Using semaphore As New SemaphoreSlim(concurrency)
-            For Each folderName In folders
-                Dim rowIndex = folders.IndexOf(folderName)
-                If Not CBool(data_tb.Rows(rowIndex).Cells(0).Value) Then
-                    logger.Info("Skipping {0}", folderName)
-                    Continue For
-                End If
+        ' Read the selection once, by folder name and in the order shown, then freeze it: what is
+        ' logged here is exactly what gets downloaded, however the list is sorted afterwards.
+        Dim selectedFolders = folder_list.SelectedFolders()
+        folder_list.SelectionLocked = True
+        logger.Info("Selected {0} of {1} folders: {2}", selectedFolders.Count, folders.Count, String.Join(", ", selectedFolders))
+        For Each skipped In folders.Except(selectedFolders)
+            logger.Info("Skipping {0}", skipped)
+        Next
 
-                Await semaphore.WaitAsync(token)
+        Using semaphore As New SemaphoreSlim(concurrency)
+            For Each folderName In selectedFolders
+                ' With more folders than connections, Abort usually arrives while waiting here.
+                Try
+                    Await semaphore.WaitAsync(token)
+                Catch ex As OperationCanceledException
+                End Try
                 If token.IsCancellationRequested Then
                     logger.Warn("Operation aborted by the user!")
-                    Exit Function
+                    Exit For
                 End If
 
+                ' No token on Task.Run, and nothing escapes the task: one folder that fails (or a
+                ' task cancelled before it starts) must not make Task.WhenAll throw and leave the
+                ' acquisition half-finished with no zip, hash or log.
                 Dim currentFolder = folderName
                 Dim downloadTask = Task.Run(Sub()
                                                 Try
                                                     logger.Info("starting download of {0}", currentFolder)
                                                     DownloadFolder(currentFolder, tempRoot, token)
+                                                Catch ex As OperationCanceledException
+                                                    logger.Warn("Download of {0} aborted", currentFolder)
+                                                    folder_list.ReportState(currentFolder, FolderListView.FolderState.Aborted, "Aborted!")
+                                                Catch ex As Exception
+                                                    logger.Error(ex, "Download of {0} failed", currentFolder)
+                                                    folder_list.ReportState(currentFolder, FolderListView.FolderState.Failed, $"Failed: {ex.Message}")
                                                 Finally
                                                     semaphore.Release()
                                                 End Try
-                                            End Sub, token)
+                                            End Sub)
                 tasks.Add(downloadTask)
             Next
             Await Task.WhenAll(tasks.ToArray())
@@ -391,9 +410,11 @@ Public Class Form1
             btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
             num_picker.Enabled = True
             btn_filter.Enabled = True
+            folder_list.SelectionLocked = False
             Exit Function
         End If
 
+        folder_list.SelectionLocked = False
         Await ZipAndHashAsync()
 
         btn_start.Visible = Not btn_start.Visible : btn_abort.Visible = Not btn_abort.Visible
@@ -426,7 +447,6 @@ Public Class Form1
     ''' all download tasks).
     ''' </summary>
     Private Sub DownloadFolder(folderName As String, destinationRoot As String, cancellationToken As CancellationToken)
-        Dim rowIndex = folders.IndexOf(folderName)
         Dim client As ImapClient = Nothing
         Try
             client = imapService.Connect(cancellationToken)
@@ -468,12 +488,12 @@ Public Class Form1
                             archiveService.RecordHash(mailPath, hashCalculator)
                         End If
                         downloaded += 1
-                        UpdateRowProgress(rowIndex, downloaded, uids.Count)
+                        folder_list.ReportProgress(folderName, downloaded, uids.Count)
                     End Try
                 Next
             End Using
 
-            SetRowCompleted(rowIndex, errorCount, downloaded, uids.Count, folderName, cancellationToken)
+            ReportFolderCompleted(folderName, errorCount, downloaded, uids.Count, cancellationToken)
         Finally
             If client IsNot Nothing Then imapService.Disconnect(client, CancellationToken.None)
         End Try
@@ -485,37 +505,17 @@ Public Class Form1
         logger.Warn("Added UNKNOWN in empty '{0}' field for preventing issues with email uid: {1} in {2}", fieldName, uid, folderName)
     End Sub
 
-    Private Sub UpdateGridRow(rowIndex As Integer, action As Action(Of DataGridViewRow))
-        If data_tb.InvokeRequired Then
-            data_tb.Invoke(Sub() action(data_tb.Rows(rowIndex)))
+    Private Sub ReportFolderCompleted(folderName As String, errorCount As Integer, downloaded As Integer, total As Integer, cancellationToken As CancellationToken)
+        If cancellationToken.IsCancellationRequested Then
+            logger.Warn("Downloaded only {0} emails out of {1} from {2}", downloaded, total, folderName)
+            folder_list.ReportState(folderName, FolderListView.FolderState.Aborted, $"Aborted! Downloaded only {downloaded} emails out of {total}")
+        ElseIf errorCount > 0 Then
+            logger.Info("Download of {0} completed with {1} errors.", folderName, errorCount)
+            folder_list.ReportState(folderName, FolderListView.FolderState.CompletedWithErrors, $"Completed with {errorCount} errors")
         Else
-            action(data_tb.Rows(rowIndex))
+            logger.Info("Download of {0} completed with {1} errors.", folderName, errorCount)
+            folder_list.ReportState(folderName, FolderListView.FolderState.Completed, "Completed.")
         End If
-    End Sub
-
-    Private Sub UpdateRowProgress(rowIndex As Integer, downloaded As Integer, total As Integer)
-        UpdateGridRow(rowIndex, Sub(row)
-                                    row.Cells(3).Value = $"Downloading {downloaded}/{total} ({downloaded * 100 \ total}%)"
-                                    row.Cells(3).Style.BackColor = Color.FromArgb(255, 201, 102)
-                                End Sub)
-    End Sub
-
-    Private Sub SetRowCompleted(rowIndex As Integer, errorCount As Integer, downloaded As Integer, total As Integer, folderName As String, cancellationToken As CancellationToken)
-        UpdateGridRow(rowIndex, Sub(row)
-                                    If cancellationToken.IsCancellationRequested Then
-                                        logger.Warn("Downloaded only {0} emails out of {1} from {2}", downloaded, total, folderName)
-                                        row.Cells(3).Value = $"Aborted! Downloaded only {downloaded} emails out of {total}"
-                                        row.Cells(3).Style.BackColor = Color.FromArgb(255, 102, 102)
-                                    ElseIf errorCount > 0 Then
-                                        row.Cells(3).Value = $"Completed with {errorCount} errors"
-                                        row.Cells(3).Style.BackColor = Color.FromArgb(255, 102, 102)
-                                        logger.Info("Download of {0} completed with {1} errors.", folderName, errorCount)
-                                    Else
-                                        row.Cells(3).Value = "Completed."
-                                        row.Cells(3).Style.BackColor = Color.FromArgb(133, 224, 133)
-                                        logger.Info("Download of {0} completed with {1} errors.", folderName, errorCount)
-                                    End If
-                                End Sub)
     End Sub
 
 End Class

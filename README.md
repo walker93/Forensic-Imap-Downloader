@@ -37,7 +37,10 @@ dotnet test ForensicIMAPDownloader.Tests/ForensicIMAPDownloader.Tests.vbproj
 3. Optionally narrow down what gets downloaded with **Filter** (build an
    `AND(...)`/`OR(...)`/`NOT(...)` query against fields like `Subject`, `From`,
    `Sent After`, `Seen`, etc.).
-4. Pick which folders to include in the grid, then **Download**.
+4. Tick the folders to download, then **Download**. The list can be sorted by any column
+   and its columns resized; **Select all** / **Select none** / **Invert selection** act on
+   every folder, and Space toggles all the highlighted rows. The selection is logged and
+   locked while the download runs.
 5. **Abort** during a download lets you discard, keep (for a later resume), or
    archive-and-hash what has been downloaded so far.
 

@@ -44,11 +44,7 @@ Partial Class Form1
         Me.StatusStrip1 = New System.Windows.Forms.StatusStrip()
         Me.lbl_Status = New System.Windows.Forms.ToolStripStatusLabel()
         Me.Panel1 = New System.Windows.Forms.Panel()
-        Me.data_tb = New System.Windows.Forms.DataGridView()
-        Me.cb_col = New System.Windows.Forms.DataGridViewCheckBoxColumn()
-        Me.folders_col = New System.Windows.Forms.DataGridViewTextBoxColumn()
-        Me.mess_num_col = New System.Windows.Forms.DataGridViewTextBoxColumn()
-        Me.prog_col = New System.Windows.Forms.DataGridViewTextBoxColumn()
+        Me.folder_list = New ForensicIMAPDownloader.FolderListView()
         Me.cb_verification = New System.Windows.Forms.CheckBox()
         Me.Label7 = New System.Windows.Forms.Label()
         Me.cmb_auth = New System.Windows.Forms.ComboBox()
@@ -57,7 +53,6 @@ Partial Class Form1
         CType(Me.num_picker, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.StatusStrip1.SuspendLayout()
         Me.Panel1.SuspendLayout()
-        CType(Me.data_tb, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
         '
         'GroupBox1
@@ -88,7 +83,7 @@ Partial Class Form1
         Me.GroupBox1.Controls.Add(Me.txt_server)
         Me.GroupBox1.Location = New System.Drawing.Point(12, 12)
         Me.GroupBox1.Name = "GroupBox1"
-        Me.GroupBox1.Size = New System.Drawing.Size(590, 132)
+        Me.GroupBox1.Size = New System.Drawing.Size(696, 132)
         Me.GroupBox1.TabIndex = 0
         Me.GroupBox1.TabStop = False
         Me.GroupBox1.Text = "Settings"
@@ -96,7 +91,7 @@ Partial Class Form1
         'btn_abort
         '
         Me.btn_abort.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btn_abort.Location = New System.Drawing.Point(504, 67)
+        Me.btn_abort.Location = New System.Drawing.Point(610, 67)
         Me.btn_abort.Name = "btn_abort"
         Me.btn_abort.Size = New System.Drawing.Size(75, 23)
         Me.btn_abort.TabIndex = 10
@@ -139,7 +134,7 @@ Partial Class Form1
         '
         Me.btn_start.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.btn_start.Enabled = False
-        Me.btn_start.Location = New System.Drawing.Point(504, 67)
+        Me.btn_start.Location = New System.Drawing.Point(610, 67)
         Me.btn_start.Name = "btn_start"
         Me.btn_start.Size = New System.Drawing.Size(75, 23)
         Me.btn_start.TabIndex = 9
@@ -150,7 +145,7 @@ Partial Class Form1
         '
         Me.btn_filter.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.btn_filter.Enabled = False
-        Me.btn_filter.Location = New System.Drawing.Point(504, 41)
+        Me.btn_filter.Location = New System.Drawing.Point(610, 41)
         Me.btn_filter.Name = "btn_filter"
         Me.btn_filter.Size = New System.Drawing.Size(75, 23)
         Me.btn_filter.TabIndex = 8
@@ -161,7 +156,7 @@ Partial Class Form1
         '
         Me.btn_check.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.btn_check.Enabled = False
-        Me.btn_check.Location = New System.Drawing.Point(504, 15)
+        Me.btn_check.Location = New System.Drawing.Point(610, 15)
         Me.btn_check.Name = "btn_check"
         Me.btn_check.Size = New System.Drawing.Size(75, 23)
         Me.btn_check.TabIndex = 7
@@ -266,9 +261,9 @@ Partial Class Form1
         'StatusStrip1
         '
         Me.StatusStrip1.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.lbl_Status})
-        Me.StatusStrip1.Location = New System.Drawing.Point(0, 315)
+        Me.StatusStrip1.Location = New System.Drawing.Point(0, 458)
         Me.StatusStrip1.Name = "StatusStrip1"
-        Me.StatusStrip1.Size = New System.Drawing.Size(614, 22)
+        Me.StatusStrip1.Size = New System.Drawing.Size(720, 22)
         Me.StatusStrip1.TabIndex = 1
         Me.StatusStrip1.Text = "StatusStrip1"
         '
@@ -283,55 +278,19 @@ Partial Class Form1
         Me.Panel1.Anchor = CType((((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
             Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.Panel1.Controls.Add(Me.data_tb)
+        Me.Panel1.Controls.Add(Me.folder_list)
         Me.Panel1.Location = New System.Drawing.Point(0, 150)
         Me.Panel1.Name = "Panel1"
-        Me.Panel1.Size = New System.Drawing.Size(614, 162)
+        Me.Panel1.Size = New System.Drawing.Size(720, 305)
         Me.Panel1.TabIndex = 2
         '
-        'data_tb
+        'folder_list
         '
-        Me.data_tb.AllowUserToAddRows = False
-        Me.data_tb.AllowUserToDeleteRows = False
-        Me.data_tb.AllowUserToResizeColumns = False
-        Me.data_tb.AllowUserToResizeRows = False
-        Me.data_tb.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
-        Me.data_tb.Columns.AddRange(New System.Windows.Forms.DataGridViewColumn() {Me.cb_col, Me.folders_col, Me.mess_num_col, Me.prog_col})
-        Me.data_tb.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.data_tb.GridColor = System.Drawing.SystemColors.Control
-        Me.data_tb.Location = New System.Drawing.Point(0, 0)
-        Me.data_tb.Name = "data_tb"
-        Me.data_tb.RowHeadersVisible = False
-        Me.data_tb.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
-        Me.data_tb.Size = New System.Drawing.Size(614, 162)
-        Me.data_tb.TabIndex = 0
-        Me.data_tb.TabStop = False
-        '
-        'cb_col
-        '
-        Me.cb_col.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.AllCells
-        Me.cb_col.HeaderText = "Selected"
-        Me.cb_col.Name = "cb_col"
-        Me.cb_col.Width = 55
-        '
-        'folders_col
-        '
-        Me.folders_col.HeaderText = "Folders"
-        Me.folders_col.Name = "folders_col"
-        Me.folders_col.ReadOnly = True
-        '
-        'mess_num_col
-        '
-        Me.mess_num_col.HeaderText = "Messages"
-        Me.mess_num_col.Name = "mess_num_col"
-        Me.mess_num_col.ReadOnly = True
-        '
-        'prog_col
-        '
-        Me.prog_col.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill
-        Me.prog_col.HeaderText = "Progress"
-        Me.prog_col.Name = "prog_col"
-        Me.prog_col.ReadOnly = True
+        Me.folder_list.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.folder_list.Location = New System.Drawing.Point(0, 0)
+        Me.folder_list.Name = "folder_list"
+        Me.folder_list.Size = New System.Drawing.Size(720, 305)
+        Me.folder_list.TabIndex = 0
         '
         'cb_verification
         '
@@ -378,7 +337,7 @@ Partial Class Form1
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(614, 337)
+        Me.ClientSize = New System.Drawing.Size(720, 480)
         Me.Controls.Add(Me.Panel1)
         Me.Controls.Add(Me.StatusStrip1)
         Me.Controls.Add(Me.GroupBox1)
@@ -392,7 +351,6 @@ Partial Class Form1
         Me.StatusStrip1.ResumeLayout(False)
         Me.StatusStrip1.PerformLayout()
         Me.Panel1.ResumeLayout(False)
-        CType(Me.data_tb, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
@@ -412,14 +370,10 @@ Partial Class Form1
     Friend WithEvents StatusStrip1 As StatusStrip
     Friend WithEvents lbl_Status As ToolStripStatusLabel
     Friend WithEvents Panel1 As Panel
-    Friend WithEvents data_tb As DataGridView
+    Friend WithEvents folder_list As FolderListView
     Friend WithEvents Label5 As Label
     Friend WithEvents txt_path As TextBox
     Friend WithEvents btn_browse As Button
-    Friend WithEvents cb_col As DataGridViewCheckBoxColumn
-    Friend WithEvents folders_col As DataGridViewTextBoxColumn
-    Friend WithEvents mess_num_col As DataGridViewTextBoxColumn
-    Friend WithEvents prog_col As DataGridViewTextBoxColumn
     Friend WithEvents btn_start As Button
     Friend WithEvents btn_filter As Button
     Friend WithEvents num_picker As NumericUpDown
