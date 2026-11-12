@@ -38,12 +38,13 @@ Public Class Form1
     Private deviceCodeDialog As DeviceCodeForm
 
     Private Sub btn_browse_Click(sender As Object, e As EventArgs) Handles btn_browse.Click
-        Dim savedialog As New SaveFileDialog()
-        savedialog.OverwritePrompt = False
-        savedialog.Filter = ".zip|*.zip"
-        If savedialog.ShowDialog() <> DialogResult.OK Then Exit Sub
-        txt_path.Text = savedialog.FileName
-        saving_file = New FileInfo(savedialog.FileName)
+        Using savedialog As New SaveFileDialog()
+            savedialog.OverwritePrompt = False
+            savedialog.Filter = ".zip|*.zip"
+            If savedialog.ShowDialog(Me) <> DialogResult.OK Then Exit Sub
+            txt_path.Text = savedialog.FileName
+            saving_file = New FileInfo(savedialog.FileName)
+        End Using
         btn_check.Enabled = True
     End Sub
 
