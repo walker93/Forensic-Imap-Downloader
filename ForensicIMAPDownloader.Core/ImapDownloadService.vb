@@ -77,11 +77,21 @@ Public Class ImapDownloadService
         End Try
     End Sub
 
-    ''' <summary>Lists every folder in the account's personal namespace(s).</summary>
+    ''' <summary>
+    ''' Lists every folder in the account's personal namespace(s) that can hold messages.
+    ''' Containers flagged \Noselect (e.g. Gmail's "[Gmail]") cannot be opened - EXAMINE fails
+    ''' on them - so they are logged and left out; the folders inside them are still listed.
+    ''' </summary>
     Public Function ListFolders(client As ImapClient, cancellationToken As CancellationToken) As IList(Of IMailFolder)
         Dim allFolders As New List(Of IMailFolder)
         For Each ns As FolderNamespace In client.PersonalNamespaces
-            allFolders.AddRange(client.GetFolders(ns, StatusItems.None, False, cancellationToken))
+            For Each folder In client.GetFolders(ns, StatusItems.None, False, cancellationToken)
+                If folder.Attributes.HasFlag(FolderAttributes.NoSelect) OrElse folder.Attributes.HasFlag(FolderAttributes.NonExistent) Then
+                    logger.Info("Skipping folder {0}: it cannot contain messages ({1})", folder.FullName, folder.Attributes)
+                Else
+                    allFolders.Add(folder)
+                End If
+            Next
         Next
         Return allFolders
     End Function

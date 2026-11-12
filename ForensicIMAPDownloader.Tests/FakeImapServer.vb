@@ -21,6 +21,9 @@ Public NotInheritable Class FakeImapServer
     ''' <summary>Bearer tokens the server accepts; any other XOAUTH2 token is rejected.</summary>
     Public ReadOnly Property AcceptedTokens As New HashSet(Of String)
 
+    ''' <summary>Untagged responses returned for a LIST of every folder ("*").</summary>
+    Public Property FolderListLines As String() = {"* LIST () ""/"" INBOX"}
+
     ''' <summary>Raw authentication commands received, in order, across all connections.</summary>
     Public ReadOnly Property AuthCommands As New ConcurrentQueue(Of String)
 
@@ -82,8 +85,14 @@ Public NotInheritable Class FakeImapServer
                             AuthCommands.Enqueue(line)
                             Await writer.WriteLineAsync($"{tag} OK [CAPABILITY IMAP4rev1] authenticated")
                         Case "LIST"
-                            Dim isInbox = line.IndexOf("INBOX", StringComparison.OrdinalIgnoreCase) >= 0
-                            Await writer.WriteLineAsync(If(isInbox, "* LIST () ""/"" INBOX", "* LIST (\Noselect) ""/"" """""))
+                            If line.Contains("""*""") Then
+                                For Each listLine In FolderListLines
+                                    Await writer.WriteLineAsync(listLine)
+                                Next
+                            Else
+                                Dim isInbox = line.IndexOf("INBOX", StringComparison.OrdinalIgnoreCase) >= 0
+                                Await writer.WriteLineAsync(If(isInbox, "* LIST () ""/"" INBOX", "* LIST (\Noselect) ""/"" """""))
+                            End If
                             Await writer.WriteLineAsync($"{tag} OK done")
                         Case "LOGOUT"
                             Await writer.WriteLineAsync("* BYE bye")
