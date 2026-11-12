@@ -22,6 +22,16 @@ dotnet run --project ForensicIMAPDownloader/ForensicIMAPDownloader.vbproj
 
 Or open `ForensicIMAPDownloader.slnx` in Visual Studio 2022+ and run/debug `ForensicIMAPDownloader`.
 
+## Releases
+
+Ready-to-run Windows packages (self-contained, no .NET install needed) are attached to each
+[GitHub release](https://github.com/walker93/Forensic-Imap-Downloader/releases), with the
+SHA-256 of the zip in a `.sha256` file next to it.
+
+To publish one: **Releases → Draft a new release**, create a tag `vMAJOR.MINOR.PATCH` (e.g.
+`v1.2.0`) on `master`, write the notes and **Publish**. The `Release` workflow then runs the
+tests, builds the package with the version taken from the tag, and attaches it to the release.
+
 ## Running the tests
 
 ```powershell
