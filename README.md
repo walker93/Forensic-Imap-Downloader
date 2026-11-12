@@ -46,7 +46,7 @@ dotnet test ForensicIMAPDownloader.Tests/ForensicIMAPDownloader.Tests.vbproj
 | Auth | Use for | Needs |
 |---|---|---|
 | Password | Generic IMAP servers; Gmail with an app password | Username and password |
-| Microsoft OAuth | Outlook.com / Hotmail, Microsoft 365 | Client ID of your own app registration |
+| Microsoft OAuth | Outlook.com / Hotmail; Microsoft 365 with your own client ID | Nothing for personal accounts (built-in application); your own app registration for work accounts |
 | Google OAuth | Gmail | `client_secret.json` of your own Google Cloud OAuth client |
 
 Microsoft and Google no longer accept a plain password over IMAP, so those mailboxes are
@@ -97,6 +97,5 @@ The planned split between the free and the paid edition is in
   folder listing, search and download are not. The interactive OAuth sign-in itself needs
   a real account and is not tested automatically. The rest of the `Core` test suite covers
   the pure logic: query parsing, hashing, and `.eml`/timestamp handling.
-- No built-in Microsoft client ID yet: the operator has to enter their own.
 - A connection dropped by the server in the middle of a folder is not re-established.
 - Windows-only, like the original WinForms UI.

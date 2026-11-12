@@ -192,7 +192,10 @@ Public Class Form1
                 MsgBox("Enter the client ID of your Microsoft app registration in ""OAuth settings"".")
                 Return Nothing
             End If
-            Return New MicrosoftTokenProvider(clientId, oauthSettings.MicrosoftTenant, oauthSettings.MicrosoftUseDeviceCode, AddressOf ShowDeviceCodeAsync)
+            If oauthSettings.UsesBuiltInMicrosoftClient() AndAlso Not String.Equals(oauthSettings.MicrosoftTenant, MicrosoftTokenProvider.ConsumersTenant, StringComparison.OrdinalIgnoreCase) Then
+                logger.Warn("Tenant '{0}' ignored: the built-in application only signs in personal Microsoft accounts.", oauthSettings.MicrosoftTenant)
+            End If
+            Return New MicrosoftTokenProvider(clientId, oauthSettings.EffectiveMicrosoftTenant(), oauthSettings.MicrosoftUseDeviceCode, AddressOf ShowDeviceCodeAsync)
         End If
 
         If txt_user.Text.Trim() = "" Then

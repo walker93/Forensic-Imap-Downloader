@@ -62,6 +62,24 @@ Public Class OAuthConfigurationTests
     End Sub
 
     <Fact>
+    Public Sub Settings_BuiltInClient_IsShippedAndAlwaysRestrictedToPersonalAccounts()
+        Dim settings As New OAuthAppSettings With {.MicrosoftClientId = "", .MicrosoftTenant = "common"}
+
+        Assert.True(Guid.TryParse(OAuthAppSettings.DefaultMicrosoftClientId, Nothing))
+        Assert.Equal(OAuthAppSettings.DefaultMicrosoftClientId, settings.EffectiveMicrosoftClientId())
+        Assert.Equal("consumers", settings.EffectiveMicrosoftTenant())
+    End Sub
+
+    <Fact>
+    Public Sub Settings_OwnClient_UsesTheConfiguredTenant()
+        Dim settings As New OAuthAppSettings With {.MicrosoftClientId = "my-own-id", .MicrosoftTenant = " organizations "}
+        Assert.Equal("organizations", settings.EffectiveMicrosoftTenant())
+
+        settings.MicrosoftTenant = ""
+        Assert.Equal("consumers", settings.EffectiveMicrosoftTenant())
+    End Sub
+
+    <Fact>
     Public Sub MicrosoftProvider_WithoutClientId_IsRejected()
         Assert.Throws(Of ArgumentException)(Function() New MicrosoftTokenProvider("  ", "consumers", False))
     End Sub

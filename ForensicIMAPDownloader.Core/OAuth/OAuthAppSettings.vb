@@ -10,10 +10,10 @@ Imports System.Text.Json
 Public Class OAuthAppSettings
 
     ''' <summary>
-    ''' Client ID shipped with the tool for personal Microsoft accounts. Empty until the project's
-    ''' own Entra app registration exists; the operator then has to supply one in the UI.
+    ''' Client ID of the project's own Entra app registration, used when the operator does not
+    ''' enter one. It is only ever used for personal Microsoft accounts: see <see cref="EffectiveMicrosoftTenant"/>.
     ''' </summary>
-    Public Const DefaultMicrosoftClientId As String = ""
+    Public Const DefaultMicrosoftClientId As String = "43efee9c-3af2-4a72-a898-0021569bd166"
 
     Public Property MicrosoftClientId As String = ""
     Public Property MicrosoftTenant As String = MicrosoftTokenProvider.ConsumersTenant
@@ -22,7 +22,20 @@ Public Class OAuthAppSettings
 
     ''' <summary>The operator's client ID when set, otherwise the one shipped with the tool.</summary>
     Public Function EffectiveMicrosoftClientId() As String
-        Return If(String.IsNullOrWhiteSpace(MicrosoftClientId), DefaultMicrosoftClientId, MicrosoftClientId.Trim())
+        Return If(UsesBuiltInMicrosoftClient(), DefaultMicrosoftClientId, MicrosoftClientId.Trim())
+    End Function
+
+    Public Function UsesBuiltInMicrosoftClient() As Boolean
+        Return String.IsNullOrWhiteSpace(MicrosoftClientId)
+    End Function
+
+    ''' <summary>
+    ''' The tenant to sign in against. The built-in application is restricted to personal
+    ''' accounts whatever tenant is configured; any other tenant needs the operator's own client ID.
+    ''' </summary>
+    Public Function EffectiveMicrosoftTenant() As String
+        If UsesBuiltInMicrosoftClient() OrElse String.IsNullOrWhiteSpace(MicrosoftTenant) Then Return MicrosoftTokenProvider.ConsumersTenant
+        Return MicrosoftTenant.Trim()
     End Function
 
     Public Shared Function DefaultPath() As String

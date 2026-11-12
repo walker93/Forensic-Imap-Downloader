@@ -9,6 +9,13 @@ to the mailbox is written to disk or to `report.log`.
 
 ## Microsoft (Outlook.com, Hotmail, Microsoft 365)
 
+**Personal accounts need no registration**: leave *Client ID* empty in **OAuth settings…**
+and the tool uses its built-in application. The built-in application always signs in
+against the `consumers` tenant, whatever tenant is configured.
+
+For work accounts, or to have your lab's own name on the consent screen, register your own
+application:
+
 1. Sign in to the [Azure portal](https://portal.azure.com) with an account that has a
    Microsoft Entra tenant (a free Azure account creates one).
 2. **Microsoft Entra ID → App registrations → New registration**

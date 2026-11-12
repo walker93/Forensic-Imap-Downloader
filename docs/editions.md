@@ -52,4 +52,4 @@ o `organizations`; il tenant aziendale può però richiedere il consenso dell'am
 | OAuth Google con `client_secret.json` del laboratorio | Implementato |
 | Log di audit dell'accesso OAuth | Implementato |
 | Revoca dell'accesso a fine acquisizione (automatica su Google, guidata su Microsoft) | Implementato |
-| Client ID Microsoft predefinito | Da fare: serve la registrazione dell'app (vedi [oauth-setup.md](oauth-setup.md)), poi va inserito in `OAuthAppSettings.DefaultMicrosoftClientId` |
+| Client ID Microsoft predefinito (forzato sul tenant `consumers`) | Implementato |

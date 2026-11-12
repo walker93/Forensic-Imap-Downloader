@@ -34,7 +34,7 @@ Public Class OAuthSettingsForm
         txt_ms_tenant.Location = New Point(80, 48)
         txt_ms_tenant.Size = New Size(140, 20)
         microsoftBox.Controls.Add(txt_ms_tenant)
-        microsoftBox.Controls.Add(New Label With {.Text = "consumers = personal accounts only", .Location = New Point(226, 51), .AutoSize = True, .ForeColor = SystemColors.GrayText})
+        microsoftBox.Controls.Add(New Label With {.Text = "Built-in app: always consumers", .Location = New Point(226, 51), .AutoSize = True, .ForeColor = SystemColors.GrayText})
         cb_device_code.Text = "Sign in with a device code (the account owner signs in on another device)"
         cb_device_code.Location = New Point(13, 82)
         cb_device_code.AutoSize = True
