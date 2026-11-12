@@ -21,7 +21,7 @@
     <OptionInfer>On</OptionInfer>
     <Product>ForensicIMAPDownloader</Product>
     <Copyright>Copyright © Alex Cortinovis</Copyright>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

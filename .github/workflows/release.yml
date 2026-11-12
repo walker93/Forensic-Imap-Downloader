@@ -1,0 +1,69 @@
+name: Release
+
+# Publishing a release on GitHub (Releases -> Draft a new release, tag "vX.Y.Z") builds the
+# Windows package from that tag and attaches it to the release. The program's version comes
+# from the tag, so the version in the project file is only the default for local builds.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Read version from tag
+        id: version
+        shell: pwsh
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if ($env:TAG -notmatch '^v?(\d+\.\d+\.\d+)(-[0-9A-Za-z.-]+)?$') {
+            Write-Error "Tag '$env:TAG' is not a version: use vMAJOR.MINOR.PATCH, e.g. v1.2.0 or v1.3.0-beta1."
+            exit 1
+          }
+          "version=$($Matches[1])$($Matches[2])" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test ForensicIMAPDownloader.Tests/ForensicIMAPDownloader.Tests.vbproj --configuration Release
+
+      - name: Publish (self-contained, win-x64)
+        run: >-
+          dotnet publish ForensicIMAPDownloader/ForensicIMAPDownloader.vbproj
+          --configuration Release --runtime win-x64 --self-contained true
+          -p:Version=${{ steps.version.outputs.version }}
+          --output publish/ForensicIMAPDownloader
+
+      - name: Package and hash
+        id: package
+        shell: pwsh
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          $zip = "ForensicIMAPDownloader-$env:TAG-win-x64.zip"
+          Compress-Archive -Path publish/ForensicIMAPDownloader -DestinationPath $zip
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $zip" | Out-File -Encoding ascii -NoNewline "$zip.sha256"
+          Write-Host "SHA-256 $hash  $zip"
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+
+      - name: Attach to the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          ZIP: ${{ steps.package.outputs.zip }}
+        run: gh release upload $env:TAG $env:ZIP "$env:ZIP.sha256" --clobber --repo ${{ github.repository }}
