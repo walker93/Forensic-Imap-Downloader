@@ -13,6 +13,18 @@ Public Class ImapConnectionSettings
     Public Property UseSsl As Boolean
     Public Property UserName As String
     Public Property Password As String
+
+    ''' <summary>
+    ''' When set, connections authenticate with SASL XOAUTH2 using a token from this provider
+    ''' instead of <see cref="Password"/>.
+    ''' </summary>
+    Public Property TokenProvider As IAccessTokenProvider
+
+    Public ReadOnly Property UsesOAuth As Boolean
+        Get
+            Return TokenProvider IsNot Nothing
+        End Get
+    End Property
 End Class
 
 ''' <summary>
@@ -41,7 +53,14 @@ Public Class ImapDownloadService
         Try
             Dim socketOptions = If(settings.UseSsl, SecureSocketOptions.SslOnConnect, SecureSocketOptions.None)
             client.Connect(settings.Server, settings.Port, socketOptions, cancellationToken)
-            client.Authenticate(settings.UserName, settings.Password, cancellationToken)
+            If settings.UsesOAuth Then
+                ' A fresh token per connection: each concurrent folder download opens its own
+                ' connection, possibly hours after sign-in, long past the first token's expiry.
+                Dim accessToken = settings.TokenProvider.GetAccessTokenAsync(cancellationToken).GetAwaiter().GetResult()
+                client.Authenticate(New SaslMechanismOAuth2(settings.UserName, accessToken), cancellationToken)
+            Else
+                client.Authenticate(settings.UserName, settings.Password, cancellationToken)
+            End If
             Return client
         Catch
             client.Dispose()

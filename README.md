@@ -31,7 +31,9 @@ dotnet test ForensicIMAPDownloader.Tests/ForensicIMAPDownloader.Tests.vbproj
 ## Usage
 
 1. Pick a destination `.zip` file (**Browse**).
-2. Enter the IMAP server, port, username and password, then **Connect**.
+2. Enter the IMAP server, port, username and password, then **Connect**. For
+   Outlook.com/Microsoft 365 and Gmail, pick **Microsoft OAuth** or **Google OAuth** in
+   **Auth** instead of typing a password - see [Authentication](#authentication).
 3. Optionally narrow down what gets downloaded with **Filter** (build an
    `AND(...)`/`OR(...)`/`NOT(...)` query against fields like `Subject`, `From`,
    `Sent After`, `Seen`, etc.).
@@ -39,12 +41,34 @@ dotnet test ForensicIMAPDownloader.Tests/ForensicIMAPDownloader.Tests.vbproj
 5. **Abort** during a download lets you discard, keep (for a later resume), or
    archive-and-hash what has been downloaded so far.
 
+## Authentication
+
+| Auth | Use for | Needs |
+|---|---|---|
+| Password | Generic IMAP servers; Gmail with an app password | Username and password |
+| Microsoft OAuth | Outlook.com / Hotmail, Microsoft 365 | Client ID of your own app registration |
+| Google OAuth | Gmail | `client_secret.json` of your own Google Cloud OAuth client |
+
+Microsoft and Google no longer accept a plain password over IMAP, so those mailboxes are
+reached with OAuth 2.0 (SASL XOAUTH2): the account owner signs in in the system browser -
+or, for Microsoft, on another device with a device code - and the tool never sees the
+password. Registering the applications is free and is described in
+[docs/oauth-setup.md](docs/oauth-setup.md).
+
+Tokens are held in memory only. The sign-in (method, client ID, account, granted scopes)
+is written to `report.log`, and when the download finishes the tool offers to end the
+access it was granted.
+
+The planned split between the free and the paid edition is in
+[docs/editions.md](docs/editions.md).
+
 ## Project layout
 
 - `ForensicIMAPDownloader.Core` - platform-independent library: IMAP connection/search/
   download handling (`ImapDownloadService`), the search query parser
   (`SearchQueryParser`), the zip/hash archiving and verification logic
-  (`MailArchiveService`), and file hashing (`HashCalculator`). No WinForms dependency,
+  (`MailArchiveService`), file hashing (`HashCalculator`), and the OAuth token providers
+  (`OAuth/`, built on MSAL and Google.Apis.Auth). No WinForms dependency,
   so it builds and its tests run on any OS.
 - `ForensicIMAPDownloader` - the WinForms UI, targeting `net10.0-windows`.
 - `ForensicIMAPDownloader.Tests` - xUnit tests for the `Core` project.
@@ -69,7 +93,10 @@ dotnet test ForensicIMAPDownloader.Tests/ForensicIMAPDownloader.Tests.vbproj
 
 ## Known limitations
 
-- The IMAP/MailKit integration is not covered by automated tests (would require a real
-  or fake IMAP server); the `Core` test suite covers the pure logic: query parsing,
-  hashing, and `.eml`/timestamp handling.
+- Only IMAP authentication is covered by automated tests against a fake IMAP server;
+  folder listing, search and download are not. The interactive OAuth sign-in itself needs
+  a real account and is not tested automatically. The rest of the `Core` test suite covers
+  the pure logic: query parsing, hashing, and `.eml`/timestamp handling.
+- No built-in Microsoft client ID yet: the operator has to enter their own.
+- A connection dropped by the server in the middle of a folder is not re-established.
 - Windows-only, like the original WinForms UI.

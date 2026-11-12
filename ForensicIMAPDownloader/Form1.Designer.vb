@@ -50,6 +50,9 @@ Partial Class Form1
         Me.mess_num_col = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.prog_col = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.cb_verification = New System.Windows.Forms.CheckBox()
+        Me.Label7 = New System.Windows.Forms.Label()
+        Me.cmb_auth = New System.Windows.Forms.ComboBox()
+        Me.btn_oauth = New System.Windows.Forms.Button()
         Me.GroupBox1.SuspendLayout()
         CType(Me.num_picker, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.StatusStrip1.SuspendLayout()
@@ -61,6 +64,9 @@ Partial Class Form1
         '
         Me.GroupBox1.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.GroupBox1.Controls.Add(Me.btn_oauth)
+        Me.GroupBox1.Controls.Add(Me.cmb_auth)
+        Me.GroupBox1.Controls.Add(Me.Label7)
         Me.GroupBox1.Controls.Add(Me.cb_verification)
         Me.GroupBox1.Controls.Add(Me.btn_abort)
         Me.GroupBox1.Controls.Add(Me.num_picker)
@@ -82,7 +88,7 @@ Partial Class Form1
         Me.GroupBox1.Controls.Add(Me.txt_server)
         Me.GroupBox1.Location = New System.Drawing.Point(12, 12)
         Me.GroupBox1.Name = "GroupBox1"
-        Me.GroupBox1.Size = New System.Drawing.Size(590, 106)
+        Me.GroupBox1.Size = New System.Drawing.Size(590, 132)
         Me.GroupBox1.TabIndex = 0
         Me.GroupBox1.TabStop = False
         Me.GroupBox1.Text = "Settings"
@@ -278,9 +284,9 @@ Partial Class Form1
             Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.Panel1.Controls.Add(Me.data_tb)
-        Me.Panel1.Location = New System.Drawing.Point(0, 124)
+        Me.Panel1.Location = New System.Drawing.Point(0, 150)
         Me.Panel1.Name = "Panel1"
-        Me.Panel1.Size = New System.Drawing.Size(614, 188)
+        Me.Panel1.Size = New System.Drawing.Size(614, 162)
         Me.Panel1.TabIndex = 2
         '
         'data_tb
@@ -297,7 +303,7 @@ Partial Class Form1
         Me.data_tb.Name = "data_tb"
         Me.data_tb.RowHeadersVisible = False
         Me.data_tb.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
-        Me.data_tb.Size = New System.Drawing.Size(614, 188)
+        Me.data_tb.Size = New System.Drawing.Size(614, 162)
         Me.data_tb.TabIndex = 0
         Me.data_tb.TabStop = False
         '
@@ -338,6 +344,35 @@ Partial Class Form1
         Me.cb_verification.TabIndex = 1002
         Me.cb_verification.Text = "Verification"
         Me.cb_verification.UseVisualStyleBackColor = True
+        '
+        'Label7
+        '
+        Me.Label7.AutoSize = True
+        Me.Label7.Location = New System.Drawing.Point(44, 98)
+        Me.Label7.Name = "Label7"
+        Me.Label7.Size = New System.Drawing.Size(32, 13)
+        Me.Label7.TabIndex = 2
+        Me.Label7.Text = "Auth:"
+        '
+        'cmb_auth
+        '
+        Me.cmb_auth.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList
+        Me.cmb_auth.FormattingEnabled = True
+        Me.cmb_auth.Items.AddRange(New Object() {"Password", "Microsoft OAuth", "Google OAuth"})
+        Me.cmb_auth.Location = New System.Drawing.Point(82, 95)
+        Me.cmb_auth.Name = "cmb_auth"
+        Me.cmb_auth.Size = New System.Drawing.Size(201, 21)
+        Me.cmb_auth.TabIndex = 1003
+        '
+        'btn_oauth
+        '
+        Me.btn_oauth.Enabled = False
+        Me.btn_oauth.Location = New System.Drawing.Point(289, 94)
+        Me.btn_oauth.Name = "btn_oauth"
+        Me.btn_oauth.Size = New System.Drawing.Size(110, 23)
+        Me.btn_oauth.TabIndex = 1004
+        Me.btn_oauth.Text = "&OAuth settings..."
+        Me.btn_oauth.UseVisualStyleBackColor = True
         '
         'Form1
         '
@@ -391,4 +426,7 @@ Partial Class Form1
     Friend WithEvents Label6 As Label
     Friend WithEvents btn_abort As Button
     Friend WithEvents cb_verification As CheckBox
+    Friend WithEvents Label7 As Label
+    Friend WithEvents cmb_auth As ComboBox
+    Friend WithEvents btn_oauth As Button
 End Class

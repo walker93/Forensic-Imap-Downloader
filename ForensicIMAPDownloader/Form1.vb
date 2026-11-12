@@ -24,6 +24,19 @@ Public Class Form1
     Private Const MessageDownloadTimeout As Integer = 2 ' minutes
     Private pauseEvent As New ManualResetEventSlim(True)
 
+    ' Order of the entries in cmb_auth.
+    Private Const AuthPassword As Integer = 0
+    Private Const AuthMicrosoft As Integer = 1
+    Private Const AuthGoogle As Integer = 2
+    Private Const MicrosoftImapServer As String = "outlook.office365.com"
+    Private Const GoogleImapServer As String = "imap.gmail.com"
+    Private Const SignInTimeout As Integer = 5 ' minutes
+
+    Private oauthSettings As OAuthAppSettings
+    Private tokenProvider As IAccessTokenProvider
+    Private signInSource As CancellationTokenSource
+    Private deviceCodeDialog As DeviceCodeForm
+
     Private Sub btn_browse_Click(sender As Object, e As EventArgs) Handles btn_browse.Click
         Dim savedialog As New SaveFileDialog()
         savedialog.OverwritePrompt = False
@@ -49,6 +62,12 @@ Public Class Form1
             .UserName = txt_user.Text.Trim(),
             .Password = txt_pass.Text
         }
+        Dim provider As IAccessTokenProvider = Nothing
+        If cmb_auth.SelectedIndex <> AuthPassword Then
+            provider = CreateTokenProvider()
+            If provider Is Nothing Then Exit Sub
+        End If
+
         imapService = New ImapDownloadService(settings, logger)
         archiveService = New MailArchiveService(logger)
 
@@ -56,10 +75,27 @@ Public Class Form1
         logger.Info("Trying to connect to server {0}", settings.Server)
 
         btn_check.Enabled = False
+        If provider Is Nothing Then
+            logger.Info("Authentication method: password")
+        Else
+            If Not Await SignInAsync(provider, settings) Then
+                btn_check.Enabled = True
+                Exit Sub
+            End If
+            settings.TokenProvider = provider
+            tokenProvider = provider
+        End If
+
         Try
             checkClient = Await Task.Run(Function() imapService.Connect(token))
         Catch ex As AuthenticationException
-            MsgBox("Check User or Password")
+            logger.Error(ex, "The server rejected the authentication")
+            If settings.UsesOAuth Then
+                MsgBox("The server rejected the OAuth sign-in." & vbCrLf &
+                       "Check that the username is the mailbox that signed in and that IMAP access is enabled for it.")
+            Else
+                MsgBox("Check User or Password")
+            End If
             btn_check.Enabled = True
             Exit Sub
         Catch ex As SslHandshakeException
@@ -118,7 +154,151 @@ Public Class Form1
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         filterQuery = SearchQuery.All
         token = TokenSource.Token
+        oauthSettings = OAuthAppSettings.Load(OAuthAppSettings.DefaultPath())
+        cmb_auth.SelectedIndex = AuthPassword
     End Sub
+
+    Private Sub cmb_auth_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmb_auth.SelectedIndexChanged
+        Dim usesOAuth = cmb_auth.SelectedIndex <> AuthPassword
+        txt_pass.Enabled = Not usesOAuth
+        btn_oauth.Enabled = usesOAuth
+        If Not usesOAuth Then Exit Sub
+
+        ' Both providers have a single IMAP endpoint: fill it in, but keep a server the operator typed.
+        Dim current = txt_server.Text.Trim()
+        If current = "" OrElse current = MicrosoftImapServer OrElse current = GoogleImapServer Then
+            txt_server.Text = If(cmb_auth.SelectedIndex = AuthMicrosoft, MicrosoftImapServer, GoogleImapServer)
+            txt_port.Text = "993"
+            cb_ssl.Checked = True
+        End If
+    End Sub
+
+    Private Sub btn_oauth_Click(sender As Object, e As EventArgs) Handles btn_oauth.Click
+        Using dialog As New OAuthSettingsForm(oauthSettings)
+            If dialog.ShowDialog(Me) <> DialogResult.OK Then Exit Sub
+        End Using
+        Try
+            oauthSettings.Save(OAuthAppSettings.DefaultPath())
+        Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException
+            MsgBox("The OAuth settings could not be saved and will be lost when the program closes." & vbCrLf & ex.Message, MsgBoxStyle.Exclamation)
+        End Try
+    End Sub
+
+    ''' <summary>Builds the token provider for the selected method, or tells the operator what is missing and returns Nothing.</summary>
+    Private Function CreateTokenProvider() As IAccessTokenProvider
+        If cmb_auth.SelectedIndex = AuthMicrosoft Then
+            Dim clientId = oauthSettings.EffectiveMicrosoftClientId()
+            If clientId = "" Then
+                MsgBox("Enter the client ID of your Microsoft app registration in ""OAuth settings"".")
+                Return Nothing
+            End If
+            Return New MicrosoftTokenProvider(clientId, oauthSettings.MicrosoftTenant, oauthSettings.MicrosoftUseDeviceCode, AddressOf ShowDeviceCodeAsync)
+        End If
+
+        If txt_user.Text.Trim() = "" Then
+            MsgBox("Enter the Gmail address of the mailbox in ""Username"".")
+            Return Nothing
+        End If
+        If Not File.Exists(oauthSettings.GoogleClientSecretsPath) Then
+            MsgBox("Select your Google OAuth client file in ""OAuth settings"".")
+            Return Nothing
+        End If
+        Try
+            Return GoogleTokenProvider.FromClientSecretsFile(oauthSettings.GoogleClientSecretsPath)
+        Catch ex As Exception
+            MsgBox("The Google OAuth client file could not be read." & vbCrLf & ex.Message, MsgBoxStyle.Exclamation)
+            Return Nothing
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' Runs the interactive sign-in and writes the audit trail for it: method, application,
+    ''' account and granted scopes - never the token itself.
+    ''' </summary>
+    Private Async Function SignInAsync(provider As IAccessTokenProvider, settings As ImapConnectionSettings) As Task(Of Boolean)
+        logger.Info("Authentication method: OAuth 2.0, provider {0}, client ID {1}", provider.ProviderName, provider.ClientId)
+        lbl_Status.Text = $"Waiting for the sign-in (times out after {SignInTimeout} minutes)..."
+
+        signInSource = CancellationTokenSource.CreateLinkedTokenSource(token)
+        signInSource.CancelAfter(TimeSpan.FromMinutes(SignInTimeout))
+        Try
+            Dim signIn = Await provider.SignInAsync(settings.UserName, signInSource.Token)
+            logger.Info("OAuth sign-in completed. Account: {0}, tenant: {1}, scopes: {2}, token expires: {3:u}",
+                        If(signIn.Account, "(not reported)"), If(signIn.TenantId, "-"), String.Join(" ", signIn.Scopes), signIn.ExpiresOn)
+
+            If settings.UserName = "" Then
+                settings.UserName = If(signIn.Account, "")
+                txt_user.Text = settings.UserName
+            ElseIf Not String.IsNullOrEmpty(signIn.Account) AndAlso Not String.Equals(signIn.Account, settings.UserName, StringComparison.OrdinalIgnoreCase) Then
+                logger.Warn("The signed-in account ({0}) differs from the username entered ({1}).", signIn.Account, settings.UserName)
+            End If
+            lbl_Status.Text = "Signed in"
+            Return True
+        Catch ex As OperationCanceledException
+            logger.Warn("OAuth sign-in cancelled or timed out.")
+            lbl_Status.Text = "Sign-in cancelled"
+            MsgBox("The sign-in was cancelled or timed out.")
+            Return False
+        Catch ex As Exception
+            logger.Error(ex, "OAuth sign-in failed")
+            lbl_Status.Text = "Sign-in failed"
+            MsgBox("The sign-in failed:" & vbCrLf & ex.Message, MsgBoxStyle.Exclamation)
+            Return False
+        Finally
+            ' Close the dialog first: its FormClosed handler cancels signInSource, which must still exist.
+            deviceCodeDialog?.Close()
+            deviceCodeDialog = Nothing
+            signInSource.Dispose()
+            signInSource = Nothing
+        End Try
+    End Function
+
+    ''' <summary>Called by the Microsoft provider, possibly off the UI thread, once the device code is issued.</summary>
+    Private Function ShowDeviceCodeAsync(info As DeviceCodeInfo) As Task
+        logger.Info("Device code issued; waiting for the sign-in at {0}", info.VerificationUrl)
+        Invoke(Sub()
+                   deviceCodeDialog = New DeviceCodeForm(info)
+                   AddHandler deviceCodeDialog.FormClosed, Sub() signInSource?.Cancel()
+                   deviceCodeDialog.Show(Me)
+               End Sub)
+        Return Task.CompletedTask
+    End Function
+
+    ''' <summary>
+    ''' An OAuth grant outlives the acquisition unless it is removed, so once the evidence is
+    ''' sealed the operator is asked to end it, and the outcome goes into the log.
+    ''' </summary>
+    Private Async Function OfferRevocationAsync() As Task
+        If tokenProvider Is Nothing Then Exit Function
+
+        Dim answer = MsgBox("The acquisition is finished." & vbCrLf & vbCrLf &
+                            "End the access granted to this application now?" & vbCrLf &
+                            "(You will have to connect again before another download.)",
+                            MsgBoxStyle.YesNo Or MsgBoxStyle.Question)
+        If answer <> MsgBoxResult.Yes Then
+            logger.Warn("OAuth access NOT ended by the operator. It can be revoked at {0}", tokenProvider.RevocationUrl)
+            Exit Function
+        End If
+
+        Dim revoked As Boolean
+        Try
+            revoked = Await tokenProvider.SignOutAsync(CancellationToken.None)
+        Catch ex As Exception
+            logger.Error(ex, "Revoking the OAuth access failed")
+        End Try
+
+        If revoked Then
+            logger.Info("OAuth access revoked at the provider; tokens discarded.")
+        Else
+            logger.Warn("Tokens discarded locally, but the grant is still listed on the account. It must be removed at {0}", tokenProvider.RevocationUrl)
+            MsgBox("The tokens were discarded, but the application is still listed on the account." & vbCrLf &
+                   "The account owner can remove it at:" & vbCrLf & tokenProvider.RevocationUrl)
+        End If
+
+        tokenProvider = Nothing
+        btn_start.Enabled = False
+        btn_filter.Enabled = False
+    End Function
 
     ' Modifica di btn_abort_Click: pausa prima di ShowDialog e riprendi se l'utente annulla
     Private Async Sub btn_abort_Click(sender As Object, e As EventArgs) Handles btn_abort.Click
@@ -231,6 +411,7 @@ Public Class Form1
 
         lbl_Status.Text = "Finished"
         Directory.Delete(tempRoot, True)
+        Await OfferRevocationAsync()
         logger.Info("---------------- Finished ----------------")
     End Function
 
