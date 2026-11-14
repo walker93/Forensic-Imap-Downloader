@@ -36,7 +36,8 @@ password dell'utente, nei backend in sola lettura e nella reportistica forense.
 | Report di acquisizione PDF firmato, da allegare alla perizia | — | ✅ |
 | Hash aggiuntivi (SHA-256) e marca temporale certificata | — | ✅ |
 | Documentazione di validazione dello strumento | — | ✅ |
-| Visualizzatore integrato a fine acquisizione, in sola lettura sullo ZIP ([dettagli](#visualizzatore-integrato-pro)) | — | ✅ |
+| Visualizzatore integrato a fine acquisizione, in sola lettura sullo ZIP ([dettagli](#visualizzatore-integrato-e-report-html-pro)) | — | ✅ |
+| Esportazione del visualizzatore come report HTML navigabile, da consegnare con lo ZIP | — | ✅ |
 | **Distribuzione e supporto** | | |
 | Codice sorgente MIT | ✅ | — (closed source) |
 | Eseguibile firmato digitalmente | — | ✅ |
@@ -45,15 +46,36 @@ password dell'utente, nei backend in sola lettura e nella reportistica forense.
 ¹ Tecnicamente funziona con il Client ID del laboratorio e il tenant impostato su `common`
 o `organizations`; il tenant aziendale può però richiedere il consenso dell'amministratore.
 
-## Visualizzatore integrato (pro)
+## Visualizzatore integrato e report HTML (pro)
 
-A download terminato, un visualizzatore apre l'acquisizione per una prima revisione senza
-estrarre nulla e senza strumenti esterni. Spunto per funzioni e grafica:
-[STViewer](https://github.com/RandyAybar/STViewer) (Rust/Tauri, licenza MIT o Apache-2.0).
-Lo prendiamo come riferimento, non come dipendenza: il progetto è molto giovane e scrive
-indici e log accanto all'archivio aperto, cosa da evitare su una prova.
+Due usi, un solo motore:
+
+- **Visualizzatore integrato**: a download terminato apre l'acquisizione dentro il programma,
+  per la revisione dell'esaminatore, senza estrarre nulla e senza strumenti esterni.
+- **Report HTML navigabile**: esportazione delle stesse pagine in una cartella con
+  `index.html`, da consegnare insieme allo ZIP. Chi la riceve (avvocato, giudice, consulente
+  di parte) la apre in un browser qualsiasi, offline, senza installare il programma.
+
+Il visualizzatore mostra pagine HTML in WebView2 (il motore di Edge incorporato); l'esportazione
+salva su disco le stesse pagine. Un'interfaccia sola da scrivere e mantenere, e il report
+mostra esattamente quello che l'esaminatore ha visto.
 
 Implementazione prevista in .NET con MimeKit (già usato dal progetto).
+
+**Riferimenti**
+
+- [STViewer](https://github.com/RandyAybar/STViewer) (Rust/Tauri, licenza MIT o Apache-2.0):
+  spunto per funzioni e grafica, in particolare la vista Headers. Riferimento, non
+  dipendenza: il progetto è molto giovane e scrive indici e log accanto all'archivio aperto,
+  cosa da evitare su una prova.
+- [Mailxaminer-HTML-Report-Index](https://github.com/walker93/Mailxaminer-HTML-Report-Index)
+  (progetto dell'autore): impostazione già collaudata del report consegnabile - albero delle
+  cartelle, elenco con ricerca per colonna, filtro per intervallo di date e per allegati,
+  esportazione della tabella (Excel, PDF, stampa), corpo nel riquadro sotto con stampa della
+  singola email. Se ne riprende l'impostazione, non il codice, che legge l'export HTML di
+  MailXaminer anziché gli `.eml`, modifica i file originali per aggiungere i pulsanti, inserisce
+  oggetti e mittenti nell'HTML senza escaping, carica i corpi con gli script attivi e usa
+  librerie del 2018-2019.
 
 **Vincoli forensi**
 
@@ -63,6 +85,11 @@ Implementazione prevista in .NET con MimeKit (già usato dal progetto).
 - HTML mostrato con contenuti remoti e script bloccati: aprire un'immagine remota
   scaricherebbe i pixel di tracciamento e avviserebbe il mittente della lettura.
 - Per ogni messaggio mostra l'MD5 registrato durante l'acquisizione.
+- Ogni testo preso dalle email (oggetto, mittente, nomi di cartelle e allegati) viene
+  codificato prima di finire nell'HTML; i corpi sono mostrati in riquadri isolati (`iframe`
+  con `sandbox`, senza script) e una Content-Security-Policy impedisce di caricare qualsiasi
+  risorsa da internet. Vale sia nel visualizzatore sia nel report: un'email costruita apposta
+  non deve poter eseguire codice sul computer di chi la esamina.
 
 **Schermate**
 
@@ -86,6 +113,20 @@ Implementazione prevista in .NET con MimeKit (già usato dal progetto).
   - *All headers*: elenco completo e grezzo, copiabile.
 - Esportazione di un messaggio o di una selezione (EML, PDF per la perizia) con l'hash del
   file esportato nel log.
+
+**Report HTML navigabile**
+
+- Generato in una cartella separata, mai accanto ai file della prova; i file originali non
+  vengono toccati.
+- Struttura: `index.html` con albero delle cartelle, elenco messaggi e riquadro del corpo; una
+  pagina per messaggio con le viste Message, Headers e allegati; collegamento all'`.eml`
+  originale e relativo MD5.
+- Elenco con ricerca per colonna, intervallo di date, filtro allegati ed esportazione della
+  tabella (CSV/Excel, PDF, stampa); stampa della singola email.
+- Funziona offline: librerie incluse nel report e aggiornate, nessuna risorsa da CDN.
+- Scalabile a decine di migliaia di messaggi (elenco paginato o con rendering differito).
+- A fine esportazione l'hash di ogni file del report e un hash complessivo vengono scritti nel
+  log di acquisizione.
 
 ## Stato della versione free
 
