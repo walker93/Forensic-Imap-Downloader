@@ -7,8 +7,9 @@ Imports System.Threading.Tasks
 
 ''' <summary>
 ''' Just enough of an IMAP server, on a loopback port without TLS, to observe how the client
-''' authenticates: it records every AUTHENTICATE/LOGIN command and accepts an XOAUTH2 login
-''' only for the configured bearer token.
+''' authenticates and downloads: it records every AUTHENTICATE/LOGIN command, accepts an XOAUTH2
+''' login only for the configured bearer token, serves one folder of <see cref="Messages"/>, and
+''' can drop the connection or stop answering on chosen FETCH commands.
 ''' </summary>
 Public NotInheritable Class FakeImapServer
     Implements IDisposable
@@ -26,6 +27,31 @@ Public NotInheritable Class FakeImapServer
 
     ''' <summary>Raw authentication commands received, in order, across all connections.</summary>
     Public ReadOnly Property AuthCommands As New ConcurrentQueue(Of String)
+
+    ''' <summary>Messages of the folder opened with EXAMINE/SELECT, by UID.</summary>
+    Public ReadOnly Property Messages As New SortedDictionary(Of UInteger, String)
+
+    Public Property UidValidity As UInteger = 42
+
+    ''' <summary>When set, UIDVALIDITY takes this value once a connection has been dropped.</summary>
+    Public Property UidValidityAfterDrop As UInteger?
+
+    ''' <summary>FETCH commands (1-based, counted across connections) on which the server closes the connection.</summary>
+    Public ReadOnly Property DropOnFetch As New HashSet(Of Integer)
+
+    ''' <summary>FETCH commands (1-based, counted across connections) the server never answers.</summary>
+    Public ReadOnly Property HangOnFetch As New HashSet(Of Integer)
+
+    ''' <summary>Connections accepted so far.</summary>
+    Public ReadOnly Property Connections As Integer
+        Get
+            Return Volatile.Read(connectionCount)
+        End Get
+    End Property
+
+    Private connectionCount As Integer
+    Private fetchCount As Integer
+    Private dropped As Boolean
 
     Public Sub New()
         listener.Start()
@@ -45,6 +71,7 @@ Public NotInheritable Class FakeImapServer
         Try
             While Not stopSource.IsCancellationRequested
                 Dim client = Await listener.AcceptTcpClientAsync(stopSource.Token)
+                Interlocked.Increment(connectionCount)
                 Dim ignored = Task.Run(Function() ServeAsync(client))
             End While
         Catch ex As OperationCanceledException
@@ -94,6 +121,38 @@ Public NotInheritable Class FakeImapServer
                                 Await writer.WriteLineAsync(If(isInbox, "* LIST () ""/"" INBOX", "* LIST (\Noselect) ""/"" """""))
                             End If
                             Await writer.WriteLineAsync($"{tag} OK done")
+                        Case "EXAMINE", "SELECT"
+                            Dim validity = If(dropped AndAlso UidValidityAfterDrop.HasValue, UidValidityAfterDrop.Value, UidValidity)
+                            Await writer.WriteLineAsync($"* {Messages.Count} EXISTS")
+                            Await writer.WriteLineAsync("* 0 RECENT")
+                            Await writer.WriteLineAsync("* FLAGS (\Seen)")
+                            Await writer.WriteLineAsync($"* OK [UIDVALIDITY {validity}] UIDs valid")
+                            Await writer.WriteLineAsync($"* OK [UIDNEXT {If(Messages.Count = 0, 1UI, Messages.Keys.Last() + 1UI)}] next")
+                            Await writer.WriteLineAsync($"{tag} OK [READ-ONLY] {command} completed")
+                        Case "UID"
+                            Dim subCommand = parts(2).ToUpperInvariant()
+                            If subCommand = "SEARCH" Then
+                                Await writer.WriteLineAsync("* SEARCH " & String.Join(" ", Messages.Keys))
+                                Await writer.WriteLineAsync($"{tag} OK SEARCH completed")
+                            ElseIf subCommand = "FETCH" Then
+                                Dim n = Interlocked.Increment(fetchCount)
+                                If DropOnFetch.Contains(n) Then
+                                    dropped = True
+                                    Exit While
+                                End If
+                                If HangOnFetch.Contains(n) Then
+                                    ' Never answer; give up once the client has long gone.
+                                    Await Task.Delay(TimeSpan.FromSeconds(10))
+                                    Exit While
+                                End If
+                                Dim uid = UInteger.Parse(parts(3))
+                                Dim body = Messages(uid)
+                                Dim sequence = Messages.Keys.ToList().IndexOf(uid) + 1
+                                Await writer.WriteAsync($"* {sequence} FETCH (UID {uid} BODY[] {{{Encoding.ASCII.GetByteCount(body)}}}{vbCrLf}{body})" & vbCrLf)
+                                Await writer.WriteLineAsync($"{tag} OK FETCH completed")
+                            Else
+                                Await writer.WriteLineAsync($"{tag} OK done")
+                            End If
                         Case "LOGOUT"
                             Await writer.WriteLineAsync("* BYE bye")
                             Await writer.WriteLineAsync($"{tag} OK done")

@@ -103,6 +103,12 @@ The planned split between the free and the paid edition is in
   add-on, whose current package pulls in `Microsoft.Windows.Compatibility` and
   `System.Data.SqlClient` - both flagged with known vulnerabilities - just for a text
   popup.
+- **Dropped connections**: if a folder's connection is lost mid-download (network glitch,
+  the server closing an idle or paused session, or a message timing out, after which MailKit
+  closes the connection), it is re-established - with a fresh OAuth token - and the message
+  retried, up to 3 times in a row. Every reconnection is logged. If the folder's UIDVALIDITY
+  changed meanwhile, the folder is stopped rather than risk downloading other messages under
+  the UIDs found before.
 
 ## Known limitations
 
@@ -110,5 +116,4 @@ The planned split between the free and the paid edition is in
   folder listing, search and download are not. The interactive OAuth sign-in itself needs
   a real account and is not tested automatically. The rest of the `Core` test suite covers
   the pure logic: query parsing, hashing, and `.eml`/timestamp handling.
-- A connection dropped by the server in the middle of a folder is not re-established.
 - Windows-only, like the original WinForms UI.

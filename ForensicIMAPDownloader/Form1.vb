@@ -447,12 +447,12 @@ Public Class Form1
     ''' all download tasks).
     ''' </summary>
     Private Sub DownloadFolder(folderName As String, destinationRoot As String, cancellationToken As CancellationToken)
-        Dim client As ImapClient = Nothing
-        Try
-            client = imapService.Connect(cancellationToken)
-            Dim folder = client.GetFolder(folderName, cancellationToken)
-            imapService.OpenReadOnly(folder, cancellationToken)
-            Dim uids = imapService.Search(folder, filterQuery, cancellationToken)
+        ' The session re-establishes a dropped connection (network glitch, server timing out an
+        ' idle or paused session, or a message download timeout) instead of failing every
+        ' remaining message of the folder.
+        Using session As New FolderSession(imapService, folderName, logger)
+            session.Open(cancellationToken)
+            Dim uids = session.Search(filterQuery, cancellationToken)
 
             Dim destFolder = Path.Combine(destinationRoot, folderName)
             Directory.CreateDirectory(destFolder)
@@ -473,11 +473,17 @@ Public Class Form1
                     Dim mailPath = Path.Combine(destFolder, uid.ToString() & ".eml")
                     Try
                         If Not File.Exists(mailPath) Then
-                            Dim message = imapService.DownloadMessage(folder, uid, TimeSpan.FromMinutes(MessageDownloadTimeout), cancellationToken)
+                            Dim message = session.DownloadMessage(uid, TimeSpan.FromMinutes(MessageDownloadTimeout), cancellationToken)
                             EnsureAddressPresent(message.To, uid, folderName, "To")
                             EnsureAddressPresent(message.From, uid, folderName, "From")
                             message.SaveAsEml(mailPath)
                         End If
+                    Catch ex As FolderSessionException
+                        ' The folder cannot go on (connection lost for good, or UIDVALIDITY changed):
+                        ' stop it here instead of failing each remaining message in turn.
+                        logger.Error("Folder {0}: stopped at email {1} of {2}. {3}", folderName, downloaded + 1, uids.Count, ex.Message)
+                        If File.Exists(mailPath) Then File.Delete(mailPath)
+                        Throw
                     Catch ex As Exception
                         logger.Warn("Folder {2}: email {0} of {1} had a problem.", downloaded + 1, uids.Count, folderName)
                         logger.Warn(ex)
@@ -493,10 +499,11 @@ Public Class Form1
                 Next
             End Using
 
+            If session.Reconnections > 0 Then
+                logger.Info("Folder {0}: the connection was re-established {1} time(s) during the download.", folderName, session.Reconnections)
+            End If
             ReportFolderCompleted(folderName, errorCount, downloaded, uids.Count, cancellationToken)
-        Finally
-            If client IsNot Nothing Then imapService.Disconnect(client, CancellationToken.None)
-        End Try
+        End Using
     End Sub
 
     Private Sub EnsureAddressPresent(list As InternetAddressList, uid As UniqueId, folderName As String, fieldName As String)
